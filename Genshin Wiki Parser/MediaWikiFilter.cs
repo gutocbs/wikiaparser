@@ -1,10 +1,8 @@
 using System.Xml;
+using Genshin.Wiki.Parser.Enum;
 using Genshin.Wiki.Parser.Helpers;
-using Genshin.Wiki.Parser.Models;
-using Genshin.Wiki.Parser.Models.Character;
 using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
-using Genshin.Wiki.Parser.Parsers;
 using Genshin.Wiki.Parser.Services;
 using Newtonsoft.Json;
 using Formatting = Newtonsoft.Json.Formatting;
@@ -20,13 +18,41 @@ public static class MediaWikiFilter
     {
         // 1) Carrega ignore list (leve)
         (HashSet<string> ignoreTitles, List<string> ignoreKeywords) = IgnoreListHelper.Load(ignoreListPath);
+        
+        
+        bool ShouldParse(Page page)
+        {
+            return !IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords) && 
+                   !IgnoreListHelper.ShouldIgnore(page.revision.text.content, ignoreKeywords);
+        }
+        
+        bool PagePredicate(Page page)
+        {
+            if (IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords))
+                return false;
+            if (IgnoreListHelper.ShouldIgnore(page.revision.text.content, ignoreKeywords))
+                return false;
+            return page.About is not null;
+        }
+        
+        List<ParserRegistration> parsers = new List<ParserRegistration>
+        {
+            new("playableCharacters", ObjectTypeEnum.PlayableCharacter),
+            new("weapons",    ObjectTypeEnum.Weapon),
+            new("artifacts",    ObjectTypeEnum.Artifact),
+            new("npcs",    ObjectTypeEnum.NonPlayableCharacter),
+            new("enemy",    ObjectTypeEnum.Enemy),
+            // new("locations",  text => LocationPageParser.TryParseLocation(text)),
+            // ...
+        };
 
         // 2) Converte XML -> JSON direto para um arquivo temp (sem string gigante)
         string tempJsonPath = Path.GetTempFileName();
         using (FileStream fs = new FileStream(tempJsonPath, FileMode.Create, FileAccess.Write, FileShare.None))
         using (StreamWriter sw = new StreamWriter(fs))
-        using (JsonTextWriter jw = new JsonTextWriter(sw) { Formatting = Formatting.None })
+        using (JsonTextWriter jw = new JsonTextWriter(sw))
         {
+            jw.Formatting = Formatting.None;
             JsonSerializer serializer = new JsonSerializer();
             serializer.Serialize(jw, doc); // <- escreve JSON direto no arquivo
         }
@@ -55,49 +81,58 @@ public static class MediaWikiFilter
 
         if (root?.mediawiki.pages != null)
         {
-            foreach (Page page in root?.mediawiki.pages!)
+            PlayableCharacterService playableCharacterService = new PlayableCharacterService();
+            WeaponService weaponService = new WeaponService();
+            ArtifactService artifactService = new ArtifactService();
+            NpcService npcService = new NpcService();
+            EnemyService enemyService = new EnemyService();
+            foreach (Page page in root.mediawiki.pages)
             {
-                string? wikiText = page.revision?.text.content;
-        
-                CharacterDto? dto = CharacterParser.TryParseCharacter(wikiText);
-                if (page.revision != null && dto != null)
-                    page.About = dto;
+                string wikiText = page.revision.text.content;
+                if (string.IsNullOrWhiteSpace(wikiText)) continue;
+
+                if (!ShouldParse(page)) continue;
+                
+                string key = TextHelper.GetBaseKey(page.title);
+                if (string.IsNullOrEmpty(key)) continue;
+
+                var parsed = playableCharacterService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 2) Tenta parsear Armas
+                weaponService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 3) Tenta parsear Artefatos
+                artifactService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 4) Tenta parsear NPCs
+                npcService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 5) Tenta parsear Enemies
+                enemyService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
             }
         }
         
-        var parsers = new List<ParserRegistration>
-        {
-            new("characters", CharacterParser.TryParseCharacter),
-            // new("weapons",    text => WeaponPageParser.TryParseWeapon(text)),
-            // new("locations",  text => LocationPageParser.TryParseLocation(text)),
-            // ...
-        };
-        
-        bool PagePredicate(Page page)
-        {
-            var title = page.title;
-            if (IgnoreListHelper.ShouldIgnore(title, ignoreTitles, ignoreKeywords))
-                return false;
-            if (IgnoreListHelper.ShouldIgnore(page.revision.text.content, ignoreKeywords))
-                return false;
-            return page.About is not null;
-        }
-        
         MultiSinkExporter.ExportPerType(
-            pages: root.mediawiki.pages,
+            pages: root!.mediawiki.pages,
             parsers: parsers,
             outputDir: outputPath,
             pagePredicate: PagePredicate
         );
 
         // 5) Salva o JSON final direto no disco (sem string em memória)
-        using (FileStream fs = new FileStream($"{outputPath}/saida.txt",FileMode.Create, FileAccess.Write, FileShare.None))
-        using (StreamWriter sw = new StreamWriter(fs))
-        using (JsonTextWriter jw = new JsonTextWriter(sw) { Formatting = Formatting.Indented })
-        {
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.Serialize(jw, root);
-        }
+        // using (FileStream fs = new FileStream($"{outputPath}/saida.txt",FileMode.Create, FileAccess.Write, FileShare.None))
+        // using (StreamWriter sw = new StreamWriter(fs))
+        // using (JsonTextWriter jw = new JsonTextWriter(sw) { Formatting = Formatting.Indented })
+        // {
+        //     JsonSerializer serializer = new JsonSerializer();
+        //     serializer.Serialize(jw, root);
+        // }
 
         // 6) Limpeza do temp
         try { File.Delete(tempJsonPath); } catch { /* noop */ }

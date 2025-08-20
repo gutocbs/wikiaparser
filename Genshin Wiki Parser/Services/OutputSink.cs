@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Genshin.Wiki.Parser.Services;
 

@@ -13,7 +13,10 @@ public static class MultiSinkExporter
         Func<Page, bool>? pagePredicate = null // filtro extra (ex.: ignore list)
     )
     {
-        var serializer = new JsonSerializer();
+        var serializer = new JsonSerializer
+        {
+            NullValueHandling = NullValueHandling.Ignore
+        };
         // cria um sink por parser
         var sinks = parsers.ToDictionary(
             p => p.Key,
@@ -27,16 +30,15 @@ public static class MultiSinkExporter
                 if (page == null) continue;
                 if (pagePredicate != null && !pagePredicate(page)) continue;
 
-                var text = page.revision?.text?.content;
-                if (string.IsNullOrWhiteSpace(text)) continue;
-
                 foreach (var p in parsers)
                 {
-                    var dto = p.Parse(text);
-                    if (dto != null)
+                    if (page.About != null)
                     {
-                        sinks[p.Key].Write(serializer, dto);
-                        if (p.Exclusive) break; // não tenta os outros parsers
+                        if (page.About.ObjectType == p.ObjectType && !string.IsNullOrWhiteSpace(page.title))
+                        {
+                            sinks[p.Key].Write(serializer, page.About);
+                            if (p.Exclusive) break; // não tenta os outros parsers
+                        }
                     }
                 }
             }

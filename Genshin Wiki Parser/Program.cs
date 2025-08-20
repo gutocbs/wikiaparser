@@ -6,7 +6,12 @@ class Program
 {
     static void Main()
     {
-        string xml = File.ReadAllText("F:\\Genshin Wiki Parser\\Genshin Wiki Parser\\genshin wiki.txt");
+        string path = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
+        path = path.Remove(path.LastIndexOf(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal));
+        path = path.Remove(path.LastIndexOf(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal));
+        path = path.Remove(path.LastIndexOf(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal));
+        path = Path.Combine(path, "genshin wiki.txt");
+        string xml = File.ReadAllText(path);
 
         // Carrega o XML
         XmlDocument doc = new XmlDocument();

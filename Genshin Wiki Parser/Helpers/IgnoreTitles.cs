@@ -33,9 +33,6 @@ public static class IgnoreListHelper
         if (string.IsNullOrEmpty(title))
             return false;
 
-        // Match exato
-        // if (ignoreTitles.Contains(title))
-        
         //Contém palavra-chave
         if (ignoreTitles.Any(k => title.Contains(k, StringComparison.OrdinalIgnoreCase)))
             return true;
