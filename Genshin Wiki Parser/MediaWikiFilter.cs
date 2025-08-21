@@ -42,8 +42,7 @@ public static class MediaWikiFilter
             new("artifacts",    ObjectTypeEnum.Artifact),
             new("npcs",    ObjectTypeEnum.NonPlayableCharacter),
             new("enemy",    ObjectTypeEnum.Enemy),
-            // new("locations",  text => LocationPageParser.TryParseLocation(text)),
-            // ...
+            new("factions",    ObjectTypeEnum.Faction),
         };
 
         // 2) Converte XML -> JSON direto para um arquivo temp (sem string gigante)
@@ -86,6 +85,7 @@ public static class MediaWikiFilter
             ArtifactService artifactService = new ArtifactService();
             NpcService npcService = new NpcService();
             EnemyService enemyService = new EnemyService();
+            FactionServices factionService = new FactionServices();
             foreach (Page page in root.mediawiki.pages)
             {
                 string wikiText = page.revision.text.content;
@@ -100,19 +100,23 @@ public static class MediaWikiFilter
                 if(parsed)
                     continue;
                 // 2) Tenta parsear Armas
-                weaponService.Set(page, wikiText, key);
+                parsed = weaponService.Set(page, wikiText, key);
                 if(parsed)
                     continue;
                 // 3) Tenta parsear Artefatos
-                artifactService.Set(page, wikiText, key);
+                parsed = artifactService.Set(page, wikiText, key);
                 if(parsed)
                     continue;
                 // 4) Tenta parsear NPCs
-                npcService.Set(page, wikiText, key);
+                parsed = npcService.Set(page, wikiText, key);
                 if(parsed)
                     continue;
                 // 5) Tenta parsear Enemies
-                enemyService.Set(page, wikiText, key);
+                parsed = enemyService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 6) Tenta parsear Factions
+                parsed = factionService.Set(page, wikiText, key);
                 if(parsed)
                     continue;
             }

@@ -5,6 +5,10 @@ namespace Genshin.Wiki.Parser.Helpers;
 
 public static class TextHelper
 {
+    private static Dictionary<string, string> _replacements = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Cataclysm|destruction", "Cataclysm" }
+    };
     // Extrai bloco de template com chaves balanceadas, ex.: {{Character Infobox ... }}
     public static string? ExtractTemplateBlock(string text, string templateName)
     {
@@ -387,11 +391,24 @@ public static class TextHelper
         return s.Trim();
     }
 
-    public static string? CleanInline(string? s)
+    public static string? ReplaceText(string? line)
     {
-        if (string.IsNullOrWhiteSpace(s)) return null;
+        if (string.IsNullOrWhiteSpace(line)) return null;
+        if (_replacements.Any(x => line.Contains(x.Key)))
+        {
+            KeyValuePair<string, string> replacement = _replacements.FirstOrDefault(x => line.Contains(x.Key));
+            line = line.Replace(replacement.Key, replacement.Value);
+        }
+        return line;
+    }
+
+    public static string? CleanInline(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return null;
+        ReplaceText(line);
+        
         // versão “inline”: não preserva parágrafos
-        var t = CleanText(s);
+        var t = CleanText(line);
         t = Regex.Replace(t, @"\s+", " ").Trim();
         return t;
     }
@@ -484,5 +501,39 @@ public static class TextHelper
         if (!f.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw)) return null;
         raw = raw.Trim().TrimEnd('%');
         return ToDecimal(raw);
+    }
+
+    public static string? ExtractFileFromCell(string cell)
+    {
+        // procura [[File:...]]
+        var m = Regex.Match(cell, @"\[\[\s*File:([^|\]]+)", RegexOptions.IgnoreCase);
+        if (m.Success) return m.Groups[1].Value.Trim();
+        return CleanCell(cell);
+    }
+
+    public static string CleanCell(string s)
+    {
+        var t = s;
+
+        // <br> vira " - " pra juntar partes
+        t = Regex.Replace(t, @"<\s*br\s*/?>", " - ", RegexOptions.IgnoreCase);
+
+        // remove <small>...</small>
+        t = Regex.Replace(t, @"<\s*small[^>]*>(.*?)</\s*small\s*>", "$1", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+        // remove itálico/bold wiki ''...''
+        t = Regex.Replace(t, @"''+", "");
+
+        // tira refs
+        t = Regex.Replace(t, @"<ref[^>/]*/>|<ref[^>]*>.*?</ref>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+        // desmarca link simples [[A|B]] / [[A]]
+        t = Regex.Replace(t, @"\[\[([^[\]|]+)\|([^[\]]+)\]\]", "$2");
+        t = Regex.Replace(t, @"\[\[([^[\]]+)\]\]", "$1");
+
+        // html entities comuns
+        t = t.Replace("&mdash;", "—").Replace("&ndash;", "–");
+
+        return TextHelper.CleanInline(t);
     }
 }

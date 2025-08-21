@@ -7,6 +7,7 @@ public enum ObjectTypeEnum
     NonPlayableCharacter,
     Artifact,
     Enemy,
+    Faction,
     Material,
-    Other
+    Other,
 }
