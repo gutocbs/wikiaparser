@@ -56,3 +56,4 @@ nunit-*.xml
 *.txt
 Genshin Wiki Parser/Folder.DotSettings.user
 Genshin Wiki Parser/bin.lnk
+/Genshin Wiki Parser/.idea
