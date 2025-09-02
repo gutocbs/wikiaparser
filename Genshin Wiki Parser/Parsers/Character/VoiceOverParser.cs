@@ -71,10 +71,10 @@ public static class VoiceOverParser
             switch (suf)
             {
                 case "title":
-                    line.Title = TextHelper.CleanInline(val);
+                    line.Title = TextHelper.CleanInline(val)?.Replace("{character}", "Player").Replace("{name}", "Player");
                     break;
                 case "tx":
-                    line.Text = TextHelper.CleanText(val);
+                    line.Text = TextHelper.CleanText(val).Replace("{character}", "Player").Replace("{name}", "Player");
                     break;
                 case "friendship":
                     if (int.TryParse(val.Trim(), out var f)) line.Friendship = f;
