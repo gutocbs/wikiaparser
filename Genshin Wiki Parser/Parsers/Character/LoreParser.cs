@@ -131,7 +131,7 @@ public static class LoreParser
             list.Add(new CharacterStoryDto
             {
                 Title = TextHelper.CleanInline(title),
-                Text = textN,
+                Text = textN.Replace("\n", " "),
                 Friendship = friendship,
                 Mentions = mentions
             });

@@ -54,3 +54,5 @@ TestResult.xml
 nunit-*.xml
 /.idea
 *.txt
+Genshin Wiki Parser/Folder.DotSettings.user
+Genshin Wiki Parser/bin.lnk

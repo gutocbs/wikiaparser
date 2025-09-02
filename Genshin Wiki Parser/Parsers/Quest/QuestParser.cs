@@ -14,8 +14,8 @@ public static class QuestParser
         var dto = new QuestDto { Title = pageTitle };
 
         // 1) Infobox
-        var ibox = TextHelper.ExtractTemplate("Quest Infobox", wikiText);
-        var map  = TextHelper.ParseTemplateParams(ibox);
+        var infobox = TextHelper.ExtractTemplate("Quest Infobox", wikiText);
+        var map  = TextHelper.ParseTemplateParams(infobox);
 
         dto.Id           = TextHelper.TryInt(TextHelper.Get(map, "id"));
         dto.Type         = TextHelper.Get(map, "type");
@@ -53,7 +53,7 @@ public static class QuestParser
 
     
     // ---------- Partes específicas de Quest ----------
-    private static string ExtractQuestDescription(string text)
+    private static string? ExtractQuestDescription(string text)
     {
         foreach (var t in TextHelper.ExtractTemplates("Quest Description", text))
         {
@@ -104,14 +104,10 @@ public static class QuestParser
                     {
                         var textClean = TextHelper.CleanText(line);
                         if (!string.IsNullOrWhiteSpace(textClean))
-                            section.Lines.Add(new DialogueLine { Speaker = "[Choice]", Text = textClean.Replace("DIcon","") });
+                            section.Lines.Add(new DialogueLine { Speaker = "[Choice]", Text = textClean.Replace("DIcon","").Replace(":;","") });
                         continue;
                     }
-
-                    // Tenta capturar áudio(s)
-                    Regex.Matches(line, @"\{\{\s*A\s*\|\s*([^}]+)\}\}", RegexOptions.IgnoreCase)
-                        .Select(m => m.Groups[1].Value.Trim()).ToList();
-
+                    
                     // Remove templates de áudio para facilitar parse do speaker/texto
                     var noAudio = Regex.Replace(line, @"\{\{\s*A\s*\|[^}]+\}\}", "", RegexOptions.IgnoreCase);
 
@@ -125,14 +121,14 @@ public static class QuestParser
                         var sp = TextHelper.CleanText(mTalk.Groups["sp"].Value);
                         var tx = TextHelper.CleanText(mTalk.Groups["tx"].Value);
                         if (!string.IsNullOrWhiteSpace(tx))
-                            section.Lines.Add(new DialogueLine { Speaker = sp, Text = tx });
+                            section.Lines.Add(new DialogueLine { Speaker = sp, Text = tx.Replace(":;","") });
                     }
                     else
                     {
                         // fallback: limpa wiki e joga como narrativa sem speaker
                         var txt = TextHelper.CleanText(noAudio);
                         if (!string.IsNullOrWhiteSpace(txt))
-                            section.Lines.Add(new DialogueLine { Speaker = null, Text = txt });
+                            section.Lines.Add(new DialogueLine { Speaker = null, Text = txt.Replace(":;","") });
                     }
                 }
             }

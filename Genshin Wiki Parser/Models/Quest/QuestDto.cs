@@ -12,14 +12,18 @@ public sealed class QuestDto : BaseDto
     
     [JsonIgnore]
     public int? Id { get; set; }
-    public string Type { get; set; }          // Story, Archon, World, Hangout...
+    public string? Type { get; set; }          // Story, Archon, World, Hangout...
     public bool ShouldSerializeType() => !string.IsNullOrEmpty(Type);
-    public string Chapter { get; set; }       // ex: "Historia Antiqua Chapter"
+    public string? Chapter { get; set; }       // ex: "Historia Antiqua Chapter"
     public bool ShouldSerializeChapter() => !string.IsNullOrEmpty(Chapter);
     public int? ActNum { get; set; }          // 2
-    public string Act { get; set; }           // "No Mere Stone"
+    public bool ShouldSerializeActNum() => ActNum is not null && ActNum != 0;
+    public string? Act { get; set; }           // "No Mere Stone"
+    public bool ShouldSerializeAct() => !string.IsNullOrEmpty(Act);
     public int? Part { get; set; }            // 1
+    public bool ShouldSerializePart() => Part is not null && Part != 0;
     public string Character { get; set; }     // "Zhongli"
+    public bool ShouldSerializeCharacter() => !string.IsNullOrEmpty(Character);
 
     // Localização
     public string StartLocation { get; set; }
@@ -41,7 +45,8 @@ public sealed class QuestDto : BaseDto
     public bool ShouldSerializeCharacters() => Characters.Count > 0;
 
     // Conteúdo
-    public string Description { get; set; }        // {{Quest Description|...}}
+    public string? Description { get; set; }        // {{Quest Description|...}}
+    public bool ShouldSerializeDescription() => !string.IsNullOrEmpty(Description);
 
     // Diálogo (estrutura leve)
     public List<DialogueSection> Dialogues { get; set; } = new();

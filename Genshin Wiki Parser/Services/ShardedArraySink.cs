@@ -19,7 +19,7 @@ public sealed class ShardedArraySink : IObjectSink
 
     // buffers em memória
     private readonly Dictionary<string, List<object>> _prefixBuckets; // Prefix
-    private List<object> _countBuffer; // Count
+    private readonly List<object> _countBuffer; // Count
     private int _countShardIndex = 0;
 
     public ShardedArraySink(
@@ -45,7 +45,7 @@ public sealed class ShardedArraySink : IObjectSink
             _countBuffer = new List<object>(_maxPerFile);
     }
 
-    public void Write(JsonSerializer serializer, object item)
+    public void Write(JsonSerializer serializer, object? item)
     {
         if (item == null) return;
 
@@ -79,42 +79,14 @@ public sealed class ShardedArraySink : IObjectSink
             foreach (var kv in _prefixBuckets.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
             {
                 var arr = new JArray(kv.Value.Select(JObject.FromObject));
-                var path = Path.Combine(_outputDir, $"{_baseName}.{kv.Key}.json");
+                var path = Path.Combine(_outputDir, $"{_baseName}.{kv.Key}.txt");
                 File.WriteAllText(path, arr.ToString(_pretty ? Formatting.Indented : Formatting.None), new UTF8Encoding(false));
             }
-
-            // manifest opcional
-            var manifest = new JObject
-            {
-                ["type"] = _baseName,
-                ["strategy"] = "array+prefix",
-                ["createdAt"] = DateTime.UtcNow,
-                ["totalShards"] = _prefixBuckets.Count,
-                ["shards"] = new JObject(_prefixBuckets.Select(kv =>
-                    new JProperty($"{_baseName}.{kv.Key}.json",
-                        new JObject
-                        {
-                            ["count"] = kv.Value.Count,
-                            ["prefixes"] = new JArray(kv.Key)
-                        })))
-            };
-            File.WriteAllText(Path.Combine(_outputDir, $"{_baseName}.manifest.json"),
-                manifest.ToString(Formatting.Indented), new UTF8Encoding(false));
         }
         else
         {
-            if (_countBuffer.Count > 0) FlushCountShard();
-
-            var files = Directory.EnumerateFiles(_outputDir, $"{_baseName}.*.json").ToList();
-            var manifest = new JObject
-            {
-                ["type"] = _baseName,
-                ["strategy"] = "array+count",
-                ["createdAt"] = DateTime.UtcNow,
-                ["totalShards"] = files.Count
-            };
-            File.WriteAllText(Path.Combine(_outputDir, $"{_baseName}.manifest.json"),
-                manifest.ToString(Formatting.Indented), new UTF8Encoding(false));
+            if (_countBuffer.Count > 0) 
+                FlushCountShard();
         }
     }
 
@@ -123,7 +95,7 @@ public sealed class ShardedArraySink : IObjectSink
         if (_countBuffer.Count == 0) return;
 
         var arr = new JArray(_countBuffer.Select(JObject.FromObject));
-        var path = Path.Combine(_outputDir, $"{_baseName}.{_countShardIndex:D4}.json");
+        var path = Path.Combine(_outputDir, $"{_baseName}.{_countShardIndex:D4}.txt");
         File.WriteAllText(path, arr.ToString(_pretty ? Formatting.Indented : Formatting.None), new UTF8Encoding(false));
         _countBuffer.Clear();
         _countShardIndex++;
@@ -139,7 +111,7 @@ public sealed class ShardedArraySink : IObjectSink
         return "_"; // símbolos
     }
 
-    // tenta achar Title/Name/Id por reflexão. Ajuste se quiser.
+    // tenta achar Title/Name/Id por reflexão
     private static string DefaultKeySelector(object o)
     {
         static string? TryProp(object x, string name)

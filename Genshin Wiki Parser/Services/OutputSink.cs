@@ -1,14 +1,14 @@
+using Genshin.Wiki.Parser.Services.Interfaces;
 using Newtonsoft.Json;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Genshin.Wiki.Parser.Services;
 
-public sealed class OutputSink : IDisposable
+public sealed class OutputSink : IObjectSink
 {
     private readonly FileStream _fs;
     private readonly StreamWriter _sw;
-    public readonly JsonTextWriter Writer;
-    public bool FirstItem = true;
+    private readonly JsonTextWriter _writer;
 
     public OutputSink(string path, Formatting formatting = Formatting.Indented)
     {
@@ -16,8 +16,8 @@ public sealed class OutputSink : IDisposable
 
         _fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
         _sw = new StreamWriter(_fs);
-        Writer = new JsonTextWriter(_sw) { Formatting = formatting };
-        Writer.WriteStartArray();
+        _writer = new JsonTextWriter(_sw) { Formatting = formatting };
+        _writer.WriteStartArray();
     }
 
     private static void EnsureParentDirectory(string filePath)
@@ -31,13 +31,13 @@ public sealed class OutputSink : IDisposable
 
     public void Write(JsonSerializer serializer, object dto)
     {
-        serializer.Serialize(Writer, dto);
+        serializer.Serialize(_writer, dto);
     }
 
     public void Dispose()
     {
-        Writer.WriteEndArray();
-        Writer.Flush();
+        _writer.WriteEndArray();
+        _writer.Flush();
         _sw.Flush();
         _sw.Dispose();
         _fs.Dispose();

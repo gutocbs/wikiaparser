@@ -16,9 +16,8 @@ public static class MediaWikiFilter
         string ignoreListPath,
         string outputPath)
     {
-        // 1) Carrega ignore list (leve)
+        // 1) Carrega ignore list
         (HashSet<string> ignoreTitles, List<string> ignoreKeywords) = IgnoreListHelper.Load(ignoreListPath);
-        
         
         bool ShouldParse(Page page)
         {
@@ -35,20 +34,20 @@ public static class MediaWikiFilter
             return page.About is not null;
         }
         
-        List<ParserRegistration> parsers = new List<ParserRegistration>
-        {
-            new("playableCharacters", ObjectTypeEnum.PlayableCharacter),
-            new("weapons",    ObjectTypeEnum.Weapon),
-            new("artifacts",    ObjectTypeEnum.Artifact),
-            new("npcs",    ObjectTypeEnum.NonPlayableCharacter),
-            new("enemy",    ObjectTypeEnum.Enemy),
-            new("factions",    ObjectTypeEnum.Faction),
-            new("books",    ObjectTypeEnum.Book),
-            new("location",    ObjectTypeEnum.Location),
-            new("item",    ObjectTypeEnum.Item),
-            new("furnishing",    ObjectTypeEnum.Furnishing),
-            new("quest",    ObjectTypeEnum.Quest),
-        };
+        List<ParserRegistration> parsers =
+        [
+            new("playableCharacters", ObjectTypeEnum.PlayableCharacter, true, 50),
+            new("npcs", ObjectTypeEnum.NonPlayableCharacter, true, 250),
+            new("quest", ObjectTypeEnum.Quest, true, 100),
+            new("weapons", ObjectTypeEnum.Weapon),
+            new("artifacts", ObjectTypeEnum.Artifact),
+            new("enemy", ObjectTypeEnum.Enemy),
+            new("factions", ObjectTypeEnum.Faction),
+            new("books", ObjectTypeEnum.Book),
+            new("location", ObjectTypeEnum.Location),
+            new("item", ObjectTypeEnum.Item),
+            new("furnishing", ObjectTypeEnum.Furnishing)
+        ];
 
         // 2) Converte XML -> JSON direto para um arquivo temp (sem string gigante)
         string tempJsonPath = Path.GetTempFileName();
@@ -107,48 +106,36 @@ public static class MediaWikiFilter
                 if (string.IsNullOrEmpty(key)) continue;
 
                 var parsed = playableCharacterService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 2) Tenta parsear Armas
                 parsed = weaponService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 3) Tenta parsear Artefatos
                 parsed = artifactService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 4) Tenta parsear NPCs
                 parsed = npcService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 5) Tenta parsear Enemies
                 parsed = enemyService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 6) Tenta parsear Factions
                 parsed = factionService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 7) Tenta parsear Livros
                 parsed = bookService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 8) Tenta parsear Livros
                 parsed = locationService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 9) Tenta parsear itens
                 parsed = itemService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 10) Tenta parsear moveis
                 parsed = furnishingService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                if(parsed) continue;
                 // 11) Tenta parsear quests
-                parsed = questService.Set(page, wikiText, key);
-                if(parsed)
-                    continue;
+                questService.Set(page, wikiText, key);
             }
         }
         
