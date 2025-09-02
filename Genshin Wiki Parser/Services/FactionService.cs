@@ -1,12 +1,10 @@
-using Genshin.Wiki.Parser.Models.Enemy;
 using Genshin.Wiki.Parser.Models.Faction;
 using Genshin.Wiki.Parser.Models.XML;
-using Genshin.Wiki.Parser.Parsers.Enemy;
 using Genshin.Wiki.Parser.Parsers.Faction;
 
 namespace Genshin.Wiki.Parser.Services;
 
-public class FactionServices
+public class FactionService
 {
     public bool Set(Page page, string wikiText, string key)
     {

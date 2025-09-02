@@ -8,6 +8,9 @@ public enum ObjectTypeEnum
     Artifact,
     Enemy,
     Faction,
-    Material,
-    Other,
+    Book,
+    Location,
+    Item,
+    Furnishing,
+    Quest
 }

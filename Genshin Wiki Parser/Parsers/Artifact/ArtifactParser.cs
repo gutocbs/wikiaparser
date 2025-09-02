@@ -20,7 +20,7 @@ public static class ArtifactParser
         // Campos básicos do infobox
         var set   = TextHelper.CleanInline(TextHelper.Get(f, "set"));
         var piece = TextHelper.CleanInline(TextHelper.Get(f, "piece"));
-        var img   = ParseImageField(TextHelper.Get(f, "image"));
+        ParseImageField(TextHelper.Get(f, "image"));
 
         // Descrições
         var shortDesc = ExtractDescriptionTemplate(wikitext);

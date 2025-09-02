@@ -5,7 +5,7 @@ namespace Genshin.Wiki.Parser.Helpers;
 
 public static class TextHelper
 {
-    private static Dictionary<string, string> _replacements = new(StringComparer.OrdinalIgnoreCase)
+    public static Dictionary<string, string> _replacements = new(StringComparer.OrdinalIgnoreCase)
     {
         { "Cataclysm|destruction", "Cataclysm" }
     };
@@ -348,7 +348,7 @@ public static class TextHelper
 
     public static string? CleanFieldValue(string v) => CleanText(v);
 
-    public static string? CleanText(string? v)
+    public static string CleanText(string? v)
     {
         if (string.IsNullOrWhiteSpace(v)) return string.Empty;
         var s = v;
@@ -535,5 +535,42 @@ public static class TextHelper
         t = t.Replace("&mdash;", "—").Replace("&ndash;", "–");
 
         return TextHelper.CleanInline(t);
+    }
+    
+    public static int? TryInt(string? s) => int.TryParse((s ?? "").Trim(), out var n) ? n : null;
+
+    public static string NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    public static string StripNowiki(string s) => string.IsNullOrEmpty(s) ? s : Regex.Replace(s, @"<\/?nowiki>", "", RegexOptions.IgnoreCase);
+
+    public static string ExtractTemplate(string name, string text)
+    {
+        // simples/non-greedy; funciona bem para esses infoboxes
+        var m = Regex.Match(text, @"\{\{\s*" + Regex.Escape(name) + @"\b(?<body>[\s\S]*?)\}\}",
+            RegexOptions.IgnoreCase);
+        return m.Success ? m.Groups["body"].Value : null;
+    }
+
+    public static Dictionary<string, string> ParseTemplateParams(string body)
+    {
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(body)) return dict;
+
+        // | key = value   (para; até próximo | ou fim de template)
+        foreach (Match m in Regex.Matches(body, @"\|\s*(?<k>[\w\-]+)\s*=\s*(?<v>.*?)(?=\n\||\n\}\}|\r\n\||\r\n\}\}|$)",
+                     RegexOptions.Singleline))
+        {
+            var k = m.Groups["k"].Value.Trim();
+            var v = m.Groups["v"].Value.Trim();
+            dict[k] = v;
+        }
+        return dict;
+    }
+    
+    public static IEnumerable<string> ExtractTemplates(string name, string text)
+    {
+        foreach (Match m in Regex.Matches(text, @"\{\{\s*" + Regex.Escape(name) + @"\b(?<body>[\s\S]*?)\}\}",
+                     RegexOptions.IgnoreCase))
+            yield return m.Groups["body"].Value;
     }
 }

@@ -43,6 +43,11 @@ public static class MediaWikiFilter
             new("npcs",    ObjectTypeEnum.NonPlayableCharacter),
             new("enemy",    ObjectTypeEnum.Enemy),
             new("factions",    ObjectTypeEnum.Faction),
+            new("books",    ObjectTypeEnum.Book),
+            new("location",    ObjectTypeEnum.Location),
+            new("item",    ObjectTypeEnum.Item),
+            new("furnishing",    ObjectTypeEnum.Furnishing),
+            new("quest",    ObjectTypeEnum.Quest),
         };
 
         // 2) Converte XML -> JSON direto para um arquivo temp (sem string gigante)
@@ -85,7 +90,12 @@ public static class MediaWikiFilter
             ArtifactService artifactService = new ArtifactService();
             NpcService npcService = new NpcService();
             EnemyService enemyService = new EnemyService();
-            FactionServices factionService = new FactionServices();
+            FactionService factionService = new FactionService();
+            BookService bookService = new BookService();
+            LocationService locationService = new LocationService();
+            ItemService itemService = new ItemService();
+            FurnishingService furnishingService = new FurnishingService();
+            QuestService questService = new QuestService();
             foreach (Page page in root.mediawiki.pages)
             {
                 string wikiText = page.revision.text.content;
@@ -119,6 +129,26 @@ public static class MediaWikiFilter
                 parsed = factionService.Set(page, wikiText, key);
                 if(parsed)
                     continue;
+                // 7) Tenta parsear Livros
+                parsed = bookService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 8) Tenta parsear Livros
+                parsed = locationService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 9) Tenta parsear itens
+                parsed = itemService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 10) Tenta parsear moveis
+                parsed = furnishingService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
+                // 11) Tenta parsear quests
+                parsed = questService.Set(page, wikiText, key);
+                if(parsed)
+                    continue;
             }
         }
         
@@ -129,18 +159,7 @@ public static class MediaWikiFilter
             pagePredicate: PagePredicate
         );
 
-        // 5) Salva o JSON final direto no disco (sem string em memória)
-        // using (FileStream fs = new FileStream($"{outputPath}/saida.txt",FileMode.Create, FileAccess.Write, FileShare.None))
-        // using (StreamWriter sw = new StreamWriter(fs))
-        // using (JsonTextWriter jw = new JsonTextWriter(sw) { Formatting = Formatting.Indented })
-        // {
-        //     JsonSerializer serializer = new JsonSerializer();
-        //     serializer.Serialize(jw, root);
-        // }
-
         // 6) Limpeza do temp
         try { File.Delete(tempJsonPath); } catch { /* noop */ }
     }
-    
-    
 }

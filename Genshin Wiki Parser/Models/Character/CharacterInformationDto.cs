@@ -8,7 +8,9 @@ public sealed class CharacterInformationDto
     public string? Birthday { get; set; }
     public string? Constellation { get; set; }
     public List<string?>? Regions { get; set; }
+    public bool ShouldSerializeRegions() => Regions?.Count > 0;
     public List<string?>? Affiliations { get; set; }
+    public bool ShouldSerializeAffiliations() => Affiliations?.Count > 0;
     public string? Dish { get; set; }
     public string? Namecard { get; set; }
     public string? ObtainType { get; set; }

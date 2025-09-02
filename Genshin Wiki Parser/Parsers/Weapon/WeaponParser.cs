@@ -27,7 +27,7 @@ public static class WeaponParser
         }
 
         // --- imagens do <gallery> dentro do campo image ---
-        var images = ParseWeaponImages(TextHelper.Get(f, "image"));
+        ParseWeaponImages(TextHelper.Get(f, "image"));
 
         // --- passive vars: eff_rankN_varM ---
         var passiveVars = ParsePassiveVars(f);
