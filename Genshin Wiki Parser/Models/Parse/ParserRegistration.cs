@@ -8,12 +8,14 @@ public sealed class ParserRegistration
     public bool ShouldShard { get; }                  // se true, quebra o arquivo em vários (ex.: characters_A.json, characters_B.json, ...)
     public int MaxShardCount { get; }                  // se true, quebra o arquivo em vários (ex.: characters_A.json, characters_B.json, ...)
     public ObjectTypeEnum ObjectType { get; }       // tipo do objeto que o parser retorna
+    public ShardMode ShardMode { get; } // modo de shard (Count ou Size)
     
-    public ParserRegistration(string key, ObjectTypeEnum objectType, bool shouldShard = false, int maxShardCount = 0)
+    public ParserRegistration(string key, ObjectTypeEnum objectType, bool shouldShard = false, ShardMode shardMode = ShardMode.Count, int maxShardCount = 0)
     {
         Key = key;
         ObjectType = objectType;
         ShouldShard = shouldShard;
         MaxShardCount = maxShardCount;
+        ShardMode = shardMode;
     }
 }

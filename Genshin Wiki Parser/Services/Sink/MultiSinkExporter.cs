@@ -12,19 +12,15 @@ public static class MultiSinkExporter
         IEnumerable<Page?> pages,
         IEnumerable<ParserRegistration> parsers,
         string outputDir,
-        Func<Page, bool>? pagePredicate = null // filtro extra (ex.: ignore list)
+        Func<Page, bool>? pagePredicate = null, // filtro extra (ex.: ignore list),
+        string fileExtension = "json"
     )
     {
         var serializer = new JsonSerializer
         {
             NullValueHandling = NullValueHandling.Ignore
         };
-        // cria um sink por parser
-        // Dictionary<string, OutputSink> sinks = parsers.ToDictionary(
-        //     p => p.Key,
-        //     p => new OutputSink(Path.Combine(outputDir, $"{p.Key}.json"))
-        // );
-
+        
         IEnumerable<ParserRegistration> parserRegistrations = parsers as ParserRegistration[] ?? parsers.ToArray();
         Dictionary<string, IObjectSink> sinks = parserRegistrations.ToDictionary<ParserRegistration, string, IObjectSink>(
             p => p.Key,
@@ -32,10 +28,11 @@ public static class MultiSinkExporter
                 new ShardedArraySink(
                     outputDir: Path.Combine(outputDir, $"{p.Key}"),
                     baseName: $"{p.Key}",
-                    shardMode: ShardMode.Count,
-                    maxPerFile: p.MaxShardCount
+                    shardMode: p.ShardMode,
+                    maxPerFile: p.MaxShardCount,
+                    fileExtension: fileExtension
                 ) : 
-                new OutputSink(Path.Combine(outputDir, $"{p.Key}.txt"))
+                new OutputSink(Path.Combine(outputDir, $"{p.Key}.{fileExtension}"))
         );
 
         try

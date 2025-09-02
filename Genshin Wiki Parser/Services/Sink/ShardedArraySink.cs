@@ -16,19 +16,20 @@ public sealed class ShardedArraySink : IObjectSink
     private readonly Func<object, string> _keySelector;
     private readonly bool _pretty;
     private readonly int _maxPerFile; // usado só no modo Count
+    private readonly string _fileExtension;
 
     // buffers em memória
     private readonly Dictionary<string, List<object>> _prefixBuckets; // Prefix
     private readonly List<object> _countBuffer; // Count
     private int _countShardIndex = 0;
 
-    public ShardedArraySink(
-        string outputDir,
+    public ShardedArraySink(string outputDir,
         string baseName,
         ShardMode shardMode,
         Func<object, string>? keySelector = null,
         bool pretty = true,
-        int maxPerFile = 500 // só para Count
+        int maxPerFile = 500, // só para Count
+        string fileExtension = "json"
     )
     {
         Directory.CreateDirectory(outputDir);
@@ -38,6 +39,7 @@ public sealed class ShardedArraySink : IObjectSink
         _keySelector = keySelector ?? DefaultKeySelector;
         _pretty = pretty;
         _maxPerFile = Math.Max(1, maxPerFile);
+        _fileExtension = fileExtension;
 
         if (_mode == ShardMode.Prefix)
             _prefixBuckets = new Dictionary<string, List<object>>(StringComparer.OrdinalIgnoreCase);
@@ -79,7 +81,7 @@ public sealed class ShardedArraySink : IObjectSink
             foreach (var kv in _prefixBuckets.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
             {
                 var arr = new JArray(kv.Value.Select(JObject.FromObject));
-                var path = Path.Combine(_outputDir, $"{_baseName}.{kv.Key}.txt");
+                var path = Path.Combine(_outputDir, $"{_baseName}.{kv.Key}.{_fileExtension}");
                 File.WriteAllText(path, arr.ToString(_pretty ? Formatting.Indented : Formatting.None), new UTF8Encoding(false));
             }
         }
@@ -95,7 +97,7 @@ public sealed class ShardedArraySink : IObjectSink
         if (_countBuffer.Count == 0) return;
 
         var arr = new JArray(_countBuffer.Select(JObject.FromObject));
-        var path = Path.Combine(_outputDir, $"{_baseName}.{_countShardIndex:D4}.txt");
+        var path = Path.Combine(_outputDir, $"{_baseName}.{_countShardIndex:D4}.{_fileExtension}");
         File.WriteAllText(path, arr.ToString(_pretty ? Formatting.Indented : Formatting.None), new UTF8Encoding(false));
         _countBuffer.Clear();
         _countShardIndex++;
