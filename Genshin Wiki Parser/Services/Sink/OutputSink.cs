@@ -2,7 +2,7 @@ using Genshin.Wiki.Parser.Services.Interfaces;
 using Newtonsoft.Json;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
-namespace Genshin.Wiki.Parser.Services;
+namespace Genshin.Wiki.Parser.Services.Sink;
 
 public sealed class OutputSink : IObjectSink
 {

@@ -4,6 +4,7 @@ using Genshin.Wiki.Parser.Helpers;
 using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
 using Genshin.Wiki.Parser.Services;
+using Genshin.Wiki.Parser.Services.Sink;
 using Newtonsoft.Json;
 using Formatting = Newtonsoft.Json.Formatting;
 
@@ -39,14 +40,14 @@ public static class MediaWikiFilter
             new("playableCharacters", ObjectTypeEnum.PlayableCharacter, true, ShardMode.Count, 50),
             new("npcs", ObjectTypeEnum.NonPlayableCharacter, true, ShardMode.Count, 250),
             new("quest", ObjectTypeEnum.Quest, true, ShardMode.Count, 100),
-            new("weapons", ObjectTypeEnum.Weapon),
-            new("artifacts", ObjectTypeEnum.Artifact),
-            new("enemy", ObjectTypeEnum.Enemy),
-            new("factions", ObjectTypeEnum.Faction),
-            new("books", ObjectTypeEnum.Book),
-            new("location", ObjectTypeEnum.Location),
-            new("item", ObjectTypeEnum.Item),
-            new("furnishing", ObjectTypeEnum.Furnishing)
+            new("weapons", ObjectTypeEnum.Weapon, true),
+            new("artifacts", ObjectTypeEnum.Artifact, true),
+            new("enemy", ObjectTypeEnum.Enemy, true),
+            new("factions", ObjectTypeEnum.Faction, true),
+            new("books", ObjectTypeEnum.Book, true),
+            new("location", ObjectTypeEnum.Location, true),
+            new("item", ObjectTypeEnum.Item, true),
+            new("furnishing", ObjectTypeEnum.Furnishing, true)
         ];
 
         // 2) Converte XML -> JSON direto para um arquivo temp (sem string gigante)
@@ -73,7 +74,6 @@ public static class MediaWikiFilter
         // 4) Aplica o filtro (remove páginas por título)
         if (root?.mediawiki.pages != null)
         {
-            
             root.mediawiki.pages = root.mediawiki.pages
                 .Where(p => !IgnoreListHelper.ShouldIgnore(p.title, ignoreTitles, ignoreKeywords))
                 .ToList();

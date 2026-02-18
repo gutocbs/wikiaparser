@@ -1,10 +1,8 @@
-using Genshin.Wiki.Parser.Enum;
+using System.Text.Json;
 using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
-using Genshin.Wiki.Parser.Services.Interfaces;
-using Newtonsoft.Json;
 
-namespace Genshin.Wiki.Parser.Services;
+namespace Genshin.Wiki.Parser.Services.Sink;
 
 public static class MultiSinkExporter
 {
@@ -13,41 +11,41 @@ public static class MultiSinkExporter
         IEnumerable<ParserRegistration> parsers,
         string outputDir,
         Func<Page, bool>? pagePredicate = null, // filtro extra (ex.: ignore list),
-        string fileExtension = "json"
+        string fileExtension = "txt"
     )
     {
-        var serializer = new JsonSerializer
-        {
-            NullValueHandling = NullValueHandling.Ignore
-        };
-        
         IEnumerable<ParserRegistration> parserRegistrations = parsers as ParserRegistration[] ?? parsers.ToArray();
-        Dictionary<string, IObjectSink> sinks = parserRegistrations.ToDictionary<ParserRegistration, string, IObjectSink>(
-            p => p.Key,
-            p => p.ShouldShard ? 
-                new ShardedArraySink(
-                    outputDir: Path.Combine(outputDir, $"{p.Key}"),
-                    baseName: $"{p.Key}",
-                    shardMode: p.ShardMode,
-                    maxPerFile: p.MaxShardCount,
-                    fileExtension: fileExtension
-                ) : 
-                new OutputSink(Path.Combine(outputDir, $"{p.Key}.{fileExtension}"))
-        );
+        Dictionary<string, SharedArraySink<object>> sinks = new Dictionary<string, SharedArraySink<object>>();
+
+        foreach (ParserRegistration parser in parserRegistrations)
+        {
+            sinks[parser.Key] = new SharedArraySink<object>(
+                outRoot: Path.Combine(outputDir),
+                fileExtension: fileExtension,
+                filePrefix: parser.Key,
+                maxBytesPerFile: 200L * 1024 * 1024,
+                maxWordsPerFile: 500_000,
+                maxFiles: 50,
+                oversizeBehavior: SharedArraySink<object>.OversizeItemBehavior.AllowSingleFile,
+                jsonOptions: new JsonSerializerOptions { WriteIndented = false }
+            );
+        }
 
         try
         {
+
             foreach (var page in pages)
             {
                 if (page == null) continue;
                 if (pagePredicate != null && !pagePredicate(page)) continue;
 
-                foreach (var p in parserRegistrations)
+                foreach (var p in parsers)
                 {
-                    if (page.About != null)
+                    if (page.About == null) continue;
+
+                    if (page.About.ObjectType == p.ObjectType && !string.IsNullOrWhiteSpace(page.title))
                     {
-                        if (page.About.ObjectType == p.ObjectType && !string.IsNullOrWhiteSpace(page.title)) 
-                            sinks[p.Key].Write(serializer, page.About);
+                        sinks[p.Key].Write(page.About);
                     }
                 }
             }
