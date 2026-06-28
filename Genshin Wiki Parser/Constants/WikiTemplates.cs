@@ -13,4 +13,8 @@ public static class WikiTemplates
     public const string ItemInfobox = "Item Infobox";
     public const string FurnishingInfobox = "Furnishing Infobox";
     public const string Description = "Description";
+    public const string LocationIntro = "Location Intro";
+    public const string OfficialIntroduction = "Official Introduction";
+    public const string CharacterStory = "Character Story";
+    public const string OtherLanguages = "Other Languages";
 }

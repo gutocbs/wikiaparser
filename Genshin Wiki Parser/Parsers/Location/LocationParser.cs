@@ -22,31 +22,31 @@ public static partial class LocationParser
     public static LocationDto? TryParse(string wikiText, string pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikiText)) return null;
-        if (!wikiText.Contains("{{Location Infobox", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!wikiText.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.LocationInfobox}", StringComparison.OrdinalIgnoreCase)) return null;
 
         LocationDto dto = new LocationDto { Title = pageTitle };
 
         // 1) Infobox
-        string infobox = TextHelper.ExtractTemplate("Location Infobox", wikiText);
+        string infobox = TextHelper.ExtractTemplate(WikiTemplates.LocationInfobox, wikiText);
         if (!string.IsNullOrEmpty(infobox))
         {
             Dictionary<string, string> map = TextHelper.ParseTemplateParams(infobox);
 
-            dto.Type    = TextHelper.Get(map, "type");
-            dto.Subtype = TextHelper.Get(map, "type2");
-            dto.Region  = TextHelper.Get(map, "region");
-            dto.Area    = TextHelper.Get(map, "area");
-            dto.Subarea = TextHelper.Get(map, "subarea");
+            dto.Type    = TextHelper.Get(map, CommonFieldNames.Type);
+            dto.Subtype = TextHelper.Get(map, LocationFieldNames.Subtype);
+            dto.Region  = TextHelper.Get(map, CommonFieldNames.Region);
+            dto.Area    = TextHelper.Get(map, CommonFieldNames.Area);
+            dto.Subarea = TextHelper.Get(map, CommonFieldNames.Subarea);
         }
 
         // 2) Summary do Location Intro (com If Self)
-        string intro = TextHelper.ExtractTemplate("Location Intro", wikiText);
+        string intro = TextHelper.ExtractTemplate(WikiTemplates.LocationIntro, wikiText);
         if (!string.IsNullOrEmpty(intro))
         {
             // resolve {{If Self|<página>|A|B}}
             intro = ResolveIfSelf(intro, pageTitle);
             Dictionary<string, string> introMap = TextHelper.ParseTemplateParams(intro);
-            string? descRaw = TextHelper.Get(introMap, "description");
+            string? descRaw = TextHelper.Get(introMap, CommonFieldNames.Description);
             if (!string.IsNullOrWhiteSpace(descRaw))
                 dto.Summary = TextHelper.CleanText(descRaw);
         }

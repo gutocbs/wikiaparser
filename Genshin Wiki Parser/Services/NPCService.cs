@@ -8,7 +8,7 @@ public class NpcService
 {
     public bool Set(Page page, string wikiText, string key)
     {
-        if (!wikiText.Contains("NPC", StringComparison.OrdinalIgnoreCase))
+        if (!wikiText.Contains(WikiPageMarkers.NpcText, StringComparison.OrdinalIgnoreCase))
             return false;
 
         NpcDto? artifactPiece = NpcParser.TryParse(wikiText, page.title);

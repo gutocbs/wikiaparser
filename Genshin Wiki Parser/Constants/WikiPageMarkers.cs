@@ -8,4 +8,6 @@ public static class WikiPageMarkers
     public const string CharacterStoryAnchor = "/Lore#Character Story";
     public const string NamecardAcquisitionText = "is a [[Namecard]] obtained by";
     public const string NpcText = "NPC";
+    public const string NpcType = "npc";
+    public const string NamecardText = "Namecard";
 }

@@ -50,21 +50,21 @@ public static partial class FactionParser
     public static FactionDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
-        if (!wikitext.Contains("{{Faction Infobox", StringComparison.OrdinalIgnoreCase))
+        if (!wikitext.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.FactionInfobox}", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Faction Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.FactionInfobox);
         if (box is null) return null;
 
-        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Faction Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, WikiTemplates.FactionInfobox);
 
-        if(wikitext.Contains("of the nation of Khaenri'ah by the gods... is the reason why the Abyss Order now seeks to destroy the nations watched over by The Seven."))
+        if(wikitext.Contains(WikiSpecialCases.KhaenriahAbyssOrderSkipText))
             Console.WriteLine("sdadd");
         FactionDto dto = new FactionDto
         {
             Title  = TextHelper.CleanInline(pageTitle ?? ""),
-            Base   = TextHelper.CleanInline(TextHelper.Get(fields, "base")),
-            Region = TextHelper.CleanInline(TextHelper.Get(fields, "region")),
+            Base   = TextHelper.CleanInline(TextHelper.Get(fields, FactionFieldNames.Base)),
+            Region = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Region)),
 
             Quotes            = ExtractQuotes(wikitext),
             History           = ExtractSection(wikitext, "History"),

@@ -9,19 +9,19 @@ public static class EnemyParser
     public static EnemyDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
-        if (!wikitext.Contains("{{Enemy Infobox", StringComparison.OrdinalIgnoreCase))
+        if (!wikitext.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.EnemyInfobox}", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Enemy Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.EnemyInfobox);
         if (box is null) return null;
 
-        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Enemy Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, WikiTemplates.EnemyInfobox);
 
         // --- tipo / family / group
-        string? type    = TextHelper.CleanInline(TextHelper.Get(fields, "type"));
-        string? family  = TextHelper.CleanInline(TextHelper.Get(fields, "family"));
-        string? group   = TextHelper.CleanInline(TextHelper.Get(fields, "group"));
-        string? title   = TextHelper.CleanInline(TextHelper.Get(fields, "title"));
+        string? type    = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Type));
+        string? family  = TextHelper.CleanInline(TextHelper.Get(fields, EnemyFieldNames.Family));
+        string? group   = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Group));
+        string? title   = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Title));
 
         EnemyDto dto = new EnemyDto
         {

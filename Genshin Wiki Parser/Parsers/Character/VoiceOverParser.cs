@@ -20,7 +20,7 @@ public static partial class VoiceOverParser
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
         if (string.IsNullOrWhiteSpace(pageTitle)) return null;
-        if (!pageTitle.EndsWith("/Voice-Overs", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!pageTitle.EndsWith(WikiPageMarkers.VoiceOversSuffix, StringComparison.OrdinalIgnoreCase)) return null;
 
         string character = BaseTitle(pageTitle);
 

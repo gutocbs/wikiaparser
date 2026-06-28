@@ -37,7 +37,7 @@ public sealed class QuestDto : BaseDto
     {
         if (string.IsNullOrEmpty(Subarea))
             return false;
-        return !Subarea.Contains("|chapter", StringComparison.OrdinalIgnoreCase);
+        return !Subarea.Contains(WikiSpecialCases.ChapterFieldReference, StringComparison.OrdinalIgnoreCase);
     }
 
     // Elenco

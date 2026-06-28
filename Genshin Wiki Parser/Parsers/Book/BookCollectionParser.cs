@@ -18,22 +18,22 @@ public static partial class BookCollectionParser
     public static BookCollectionDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
-        if (!wikitext.Contains("{{Book Collection Infobox", StringComparison.OrdinalIgnoreCase))
+        if (!wikitext.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.BookCollectionInfobox}", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Book Collection Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.BookCollectionInfobox);
         if (box is null) return null;
 
-        Dictionary<string, string> f = TextHelper.ParseTemplateFields(box, "Book Collection Infobox");
+        Dictionary<string, string> f = TextHelper.ParseTemplateFields(box, WikiTemplates.BookCollectionInfobox);
 
         BookCollectionDto dto = new BookCollectionDto
         {
             Title          = TextHelper.CleanInline(pageTitle ?? ""),
-            Quality        = TextHelper.TryInt(TextHelper.Get(f, "quality")),
-            RegionLore     = TextHelper.CleanInline(TextHelper.Get(f, "region_lore")),
-            RegionLocation = TextHelper.CleanInline(TextHelper.Get(f, "region_location")),
-            VolumeCount    = TextHelper.TryInt(TextHelper.Get(f, "volumes")),
-            Author         = TextHelper.CleanInline(TextHelper.Get(f, "author")),
+            Quality        = TextHelper.TryInt(TextHelper.Get(f, CommonFieldNames.Quality)),
+            RegionLore     = TextHelper.CleanInline(TextHelper.Get(f, BookCollectionFieldNames.RegionLore)),
+            RegionLocation = TextHelper.CleanInline(TextHelper.Get(f, BookCollectionFieldNames.RegionLocation)),
+            VolumeCount    = TextHelper.TryInt(TextHelper.Get(f, BookCollectionFieldNames.Volumes)),
+            Author         = TextHelper.CleanInline(TextHelper.Get(f, BookCollectionFieldNames.Author)),
             AcquisitionByVolume = ExtractAcquisitions(f),
             Volumes        = ExtractVolumes(wikitext)
         };

@@ -15,13 +15,13 @@ public static partial class WeaponParser
     public static WeaponDto? TryParse(string? wikitext)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
-        if (!wikitext.Contains("{{Weapon Infobox", StringComparison.OrdinalIgnoreCase))
+        if (!wikitext.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.WeaponInfobox}", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Weapon Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.WeaponInfobox);
         if (box is null) return null;
 
-        Dictionary<string, string> f = TextHelper.ParseTemplateFields(box, "Weapon Infobox");
+        Dictionary<string, string> f = TextHelper.ParseTemplateFields(box, WikiTemplates.WeaponInfobox);
 
         int? ToInt(string? s) => int.TryParse(s?.Trim(), out int n) ? n : null;
 
@@ -33,34 +33,34 @@ public static partial class WeaponParser
         }
 
         // --- imagens do <gallery> dentro do campo image ---
-        ParseWeaponImages(TextHelper.Get(f, "image"));
+        ParseWeaponImages(TextHelper.Get(f, CommonFieldNames.Image));
 
         // --- passive vars: eff_rankN_varM ---
         Dictionary<string, string[]>? passiveVars = ParsePassiveVars(f);
 
         // --- passive attributes: eff_att1..N ---
-        List<string?>? attrs = f.Where(kv => kv.Key.StartsWith("eff_att", StringComparison.OrdinalIgnoreCase))
+        List<string?>? attrs = f.Where(kv => kv.Key.StartsWith(WeaponFieldNames.EffectAttributePrefix, StringComparison.OrdinalIgnoreCase))
                      .Select(kv => TextHelper.CleanInline(kv.Value))
                      .Where(v => !string.IsNullOrWhiteSpace(v))
                      .ToList();
         if (attrs.Count == 0) attrs = null;
 
         // --- efeito com placeholders {varX} no lugar de (varX) ---
-        string effectTemplate = TextHelper.CleanInline(TextHelper.Get(f, "effect")) ?? "";
+        string effectTemplate = TextHelper.CleanInline(TextHelper.Get(f, WeaponFieldNames.Effect)) ?? "";
         effectTemplate = PassiveEffectVariableRegex().Replace(effectTemplate, "{$1}");
 
         WeaponDto dto = new WeaponDto
         {
-            Title              = StripSoftHyphens(TextHelper.CleanInline(TextHelper.Get(f, "title") ?? "")),
-            Id                 = ToInt(TextHelper.Get(f, "id")),
-            Type               = TextHelper.CleanInline(TextHelper.Get(f, "type")),
-            Series             = TextHelper.CleanInline(TextHelper.Get(f, "series")),
-            Quality            = ToInt(TextHelper.Get(f, "quality")),
-            BaseAtk            = ToInt(TextHelper.Get(f, "base_atk")),
-            SecondaryStatType  = TextHelper.CleanInline(TextHelper.Get(f, "2nd_stat_type")),
-            SecondaryStat      = TextHelper.CleanInline(TextHelper.Get(f, "2nd_stat")),
-            Obtain             = TextHelper.CleanInline(TextHelper.Get(f, "obtain")),
-            PassiveName        = TextHelper.CleanInline(TextHelper.Get(f, "passive")),
+            Title              = StripSoftHyphens(TextHelper.CleanInline(TextHelper.Get(f, CommonFieldNames.Title) ?? "")),
+            Id                 = ToInt(TextHelper.Get(f, CommonFieldNames.Id)),
+            Type               = TextHelper.CleanInline(TextHelper.Get(f, CommonFieldNames.Type)),
+            Series             = TextHelper.CleanInline(TextHelper.Get(f, WeaponFieldNames.Series)),
+            Quality            = ToInt(TextHelper.Get(f, CommonFieldNames.Quality)),
+            BaseAtk            = ToInt(TextHelper.Get(f, WeaponFieldNames.BaseAtk)),
+            SecondaryStatType  = TextHelper.CleanInline(TextHelper.Get(f, WeaponFieldNames.SecondaryStatType)),
+            SecondaryStat      = TextHelper.CleanInline(TextHelper.Get(f, WeaponFieldNames.SecondaryStat)),
+            Obtain             = TextHelper.CleanInline(TextHelper.Get(f, WeaponFieldNames.Obtain)),
+            PassiveName        = TextHelper.CleanInline(TextHelper.Get(f, WeaponFieldNames.Passive)),
             PassiveEffectTemplate = string.IsNullOrWhiteSpace(effectTemplate) ? null : effectTemplate,
             PassiveVars        = passiveVars,
             PassiveAttributes  = attrs,

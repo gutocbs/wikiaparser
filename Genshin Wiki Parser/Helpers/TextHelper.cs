@@ -9,7 +9,7 @@ public static partial class TextHelper
 {
     private static readonly Dictionary<string, string> Replacements = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "Cataclysm|destruction", "Cataclysm" }
+        { WikiSpecialCases.CataclysmDestruction, WikiSpecialCases.Cataclysm }
     };
     
     // Extrai bloco de template com chaves balanceadas, ex.: {{Character Infobox ... }}
@@ -27,14 +27,14 @@ public static partial class TextHelper
             if (i + 1 < text.Length && text[i] == '{' && text[i + 1] == '{')
             {
                 depth++;
-                sb.Append("{{");
+                sb.Append(WikiSyntax.TemplateOpen);
                 i += 2;
                 continue;
             }
             if (i + 1 < text.Length && text[i] == '}' && text[i + 1] == '}')
             {
                 depth--;
-                sb.Append("}}");
+                sb.Append(WikiSyntax.TemplateClose);
                 i += 2;
                 if (depth == 0) break;
                 continue;
@@ -45,8 +45,8 @@ public static partial class TextHelper
 
         string block = sb.ToString();
         // Tira a casca "{{" + "}}" externa
-        if (block.StartsWith("{{", StringComparison.Ordinal) &&
-            block.EndsWith("}}", StringComparison.Ordinal) &&
+        if (block.StartsWith(WikiSyntax.TemplateOpen, StringComparison.Ordinal) &&
+            block.EndsWith(WikiSyntax.TemplateClose, StringComparison.Ordinal) &&
             block.Length >= 4)
         {
             return block[2..^2].Trim(); // sem as chaves externas
@@ -76,14 +76,14 @@ public static partial class TextHelper
         while ((line = reader.ReadLine()) != null)
         {
             // ignora a galeria inteira (é volumosa e irrelevante para o DTO)
-            if (line.TrimStart().StartsWith("|image", StringComparison.OrdinalIgnoreCase))
+            if (line.TrimStart().StartsWith($"{WikiSyntax.FieldPrefix}{CommonFieldNames.Image}", StringComparison.OrdinalIgnoreCase))
             {
                 // consome linhas até fechar </gallery> (ou até próximo |key)
                 ConsumeImageBlock(reader, ref line);
                 continue;
             }
 
-            if (line.StartsWith("|"))
+            if (line.StartsWith(WikiSyntax.FieldPrefix))
             {
                 // finalize o campo anterior
                 if (currentKey != null)
@@ -133,7 +133,7 @@ public static partial class TextHelper
         StringBuilder sb = new StringBuilder();
         sb.AppendLine(line);
 
-        bool inGallery = line.Contains("<gallery>", StringComparison.OrdinalIgnoreCase);
+        bool inGallery = line.Contains(WikiSyntax.GalleryOpen, StringComparison.OrdinalIgnoreCase);
         while (true)
         {
             string? l = reader.ReadLine();
@@ -142,7 +142,7 @@ public static partial class TextHelper
             if (inGallery && l.IndexOf("</gallery>", StringComparison.OrdinalIgnoreCase) >= 0)
                 break;
             // também paramos se encontrar claramente o começo de outro campo
-            if (!inGallery && l.StartsWith("|")) break;
+            if (!inGallery && l.StartsWith(WikiSyntax.FieldPrefix)) break;
         }
         // no retorno normal, nada a fazer — optamos por não salvar imagem no DTO
     }
@@ -229,10 +229,10 @@ public static partial class TextHelper
 
     public static string? ExtractDescription(string fullText, string infoboxBlock)
     {
-        int startIdx = IndexOfTemplateStart(fullText, "Character Infobox");
+        int startIdx = IndexOfTemplateStart(fullText, WikiTemplates.CharacterInfobox);
         if (startIdx < 0) return null;
 
-        string block = "{{" + infoboxBlock + "}}";
+        string block = WikiSyntax.TemplateOpen + infoboxBlock + WikiSyntax.TemplateClose;
         int after = startIdx + block.Length + 1;
 
         if (after >= fullText.Length) return null;
@@ -313,7 +313,7 @@ public static partial class TextHelper
         string? line;
         while ((line = reader.ReadLine()) != null)
         {
-            if (line.TrimStart().StartsWith("|"))
+            if (line.TrimStart().StartsWith(WikiSyntax.FieldPrefix))
             {
                 // fecha o campo anterior
                 if (currentKey != null)
@@ -469,7 +469,7 @@ public static partial class TextHelper
     public static bool ContainsIgnoreCase(string? hay, string needle)
         => hay?.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
 
-    public static bool IsUrl(string value) => value.Contains("http", StringComparison.OrdinalIgnoreCase);
+    public static bool IsUrl(string value) => value.Contains(WikiSyntax.UrlMarker, StringComparison.OrdinalIgnoreCase);
 
     public static List<string>? ToList(string? v)
     {

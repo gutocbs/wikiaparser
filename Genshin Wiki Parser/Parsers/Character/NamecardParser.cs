@@ -18,15 +18,15 @@ public static partial class NamecardParser
             return null;
 
         // precisa ter "Item Infobox"
-        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Item Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.ItemInfobox);
         if (box is null) return null;
 
-        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Item Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, WikiTemplates.ItemInfobox);
 
         // checa se é Namecard
-        string? type  = TextHelper.Get(fields, "type");
-        string? group = TextHelper.Get(fields, "group");
-        if (!TextHelper.ContainsIgnoreCase(type, "Namecard") && !TextHelper.ContainsIgnoreCase(group, "Namecard"))
+        string? type  = TextHelper.Get(fields, CommonFieldNames.Type);
+        string? group = TextHelper.Get(fields, CommonFieldNames.Group);
+        if (!TextHelper.ContainsIgnoreCase(type, WikiPageMarkers.NamecardText) && !TextHelper.ContainsIgnoreCase(group, WikiPageMarkers.NamecardText))
             return null;
 
         // título e personagem
@@ -41,8 +41,8 @@ public static partial class NamecardParser
             Title       = fullTitle.Split(":")
                                    .Skip(1)
                                    .FirstOrDefault()?.Trim() ?? fullTitle, // título sem namespace,
-            Id          = TryInt(TextHelper.Get(fields, "id")),
-            Description = TextHelper.CleanInline(TextHelper.Get(fields, "description")),
+            Id          = TryInt(TextHelper.Get(fields, CommonFieldNames.Id)),
+            Description = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Description)),
             Sources     = ExtractSources(fields),
         };
 
@@ -77,7 +77,7 @@ public static partial class NamecardParser
         List<string?> list = new List<string?>();
         foreach (KeyValuePair<string, string?> kv in fields)
         {
-            if (!kv.Key.StartsWith("source", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!kv.Key.StartsWith(CommonFieldNames.SourcePrefix, StringComparison.OrdinalIgnoreCase)) continue;
             string? clean = TextHelper.CleanInline(kv.Value);
             if (!string.IsNullOrWhiteSpace(clean)) list.Add(clean);
         }

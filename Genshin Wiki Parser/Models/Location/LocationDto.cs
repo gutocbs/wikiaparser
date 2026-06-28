@@ -17,7 +17,7 @@ public sealed class LocationDto : BaseDto
     {
         if (string.IsNullOrEmpty(Summary))
             return false;
-        return !Summary.Contains("{{If Self|");
+        return !Summary.Contains(WikiSpecialCases.IfSelfTemplate);
     }
 
     public List<string> Npcs { get; set; } = new();

@@ -16,17 +16,17 @@ public static partial class NpcParser
     public static NpcDto? TryParse(string wikitext, string? title)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
-        if (!wikitext.Contains("{{Character Infobox", StringComparison.OrdinalIgnoreCase))
+        if (!wikitext.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.CharacterInfobox}", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Character Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.CharacterInfobox);
         if (box is null) return null;
 
-        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Character Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, WikiTemplates.CharacterInfobox);
 
-        string? type = TextHelper.CleanInline(TextHelper.Get(fields, "type"));
+        string? type = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Type));
         // Se o tipo explicitamente diz NPC, seguimos; caso não tenha type, ainda dá pra aceitar (muitos NPCs têm).
-        if (!string.IsNullOrWhiteSpace(type) && type.IndexOf("npc", StringComparison.OrdinalIgnoreCase) < 0)
+        if (!string.IsNullOrWhiteSpace(type) && type.IndexOf(WikiPageMarkers.NpcType, StringComparison.OrdinalIgnoreCase) < 0)
         {
             // tem infobox de personagem, mas não é NPC → provavelmente Playable/Enemy/etc.
             return null;
@@ -35,14 +35,14 @@ public static partial class NpcParser
         NpcDto dto = new NpcDto
         {
             Name        = TextHelper.CleanInline(title),
-            RealName    = TextHelper.CleanInline(TextHelper.Get(fields, "realname")),
+            RealName    = TextHelper.CleanInline(TextHelper.Get(fields, CharacterFieldNames.RealName)),
             Type        = type,
-            Element     = TextHelper.CleanInline(TextHelper.Get(fields, "element")),
-            Region      = TextHelper.CleanInline(TextHelper.Get(fields, "region")),
-            Locations   = TextHelper.ToList(TextHelper.Get(fields, "location")),
-            Affiliations= TextHelper.ToList(TextHelper.Get(fields, "affiliation")),
-            Title       = TextHelper.CleanInline(TextHelper.Get(fields, "title")),
-            Deceased    = TextHelper.CleanInline(TextHelper.Get(fields, "deceased")),
+            Element     = TextHelper.CleanInline(TextHelper.Get(fields, CharacterFieldNames.Element)),
+            Region      = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Region)),
+            Locations   = TextHelper.ToList(TextHelper.Get(fields, CharacterFieldNames.Location)),
+            Affiliations= TextHelper.ToList(TextHelper.Get(fields, CharacterFieldNames.Affiliation)),
+            Title       = TextHelper.CleanInline(TextHelper.Get(fields, CommonFieldNames.Title)),
+            Deceased    = TextHelper.CleanInline(TextHelper.Get(fields, CharacterFieldNames.Deceased)),
             Family = ExtractFamily(fields),
             ShortDescription = TextHelper.ExtractDescriptionTemplate(wikitext),
             Profile     = TextHelper.ExtractSection(wikitext, "Profile"),

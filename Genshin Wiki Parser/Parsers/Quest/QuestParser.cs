@@ -12,29 +12,29 @@ public static partial class QuestParser
     public static QuestDto? TryParse(string wikiText, string pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikiText)) return null;
-        if (!wikiText.Contains("{{Quest Infobox", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!wikiText.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.QuestInfobox}", StringComparison.OrdinalIgnoreCase)) return null;
 
         QuestDto dto = new QuestDto { Title = pageTitle };
 
         // 1) Infobox
-        string infobox = TextHelper.ExtractTemplate("Quest Infobox", wikiText);
+        string infobox = TextHelper.ExtractTemplate(WikiTemplates.QuestInfobox, wikiText);
         Dictionary<string, string> map  = TextHelper.ParseTemplateParams(infobox);
 
-        dto.Id           = TextHelper.TryInt(TextHelper.Get(map, "id"));
-        dto.Type         = TextHelper.Get(map, "type");
-        dto.Chapter      = TextHelper.Get(map, "chapter");
-        dto.ActNum       = TextHelper.TryInt(TextHelper.Get(map, "actNum"));
-        dto.Act          = TextHelper.Get(map, "act");
-        dto.Part         = TextHelper.TryInt(TextHelper.Get(map, "part"));
-        dto.Character    = TextHelper.CleanText(TextHelper.Get(map, "character"));
+        dto.Id           = TextHelper.TryInt(TextHelper.Get(map, CommonFieldNames.Id));
+        dto.Type         = TextHelper.Get(map, CommonFieldNames.Type);
+        dto.Chapter      = TextHelper.Get(map, QuestFieldNames.Chapter);
+        dto.ActNum       = TextHelper.TryInt(TextHelper.Get(map, QuestFieldNames.ActNum));
+        dto.Act          = TextHelper.Get(map, QuestFieldNames.Act);
+        dto.Part         = TextHelper.TryInt(TextHelper.Get(map, QuestFieldNames.Part));
+        dto.Character    = TextHelper.CleanText(TextHelper.Get(map, QuestFieldNames.Character));
 
-        dto.StartLocation= TextHelper.CleanText(TextHelper.Get(map, "startLocation"));
-        dto.Region       = TextHelper.CleanText(TextHelper.Get(map, "region"));
-        dto.Area         = TextHelper.CleanText(TextHelper.Get(map, "area"));
-        dto.Subarea      = TextHelper.CleanText(TextHelper.Get(map, "subarea")).Replace(" (Subarea)", "");
+        dto.StartLocation= TextHelper.CleanText(TextHelper.Get(map, QuestFieldNames.StartLocation));
+        dto.Region       = TextHelper.CleanText(TextHelper.Get(map, CommonFieldNames.Region));
+        dto.Area         = TextHelper.CleanText(TextHelper.Get(map, CommonFieldNames.Area));
+        dto.Subarea      = TextHelper.CleanText(TextHelper.Get(map, CommonFieldNames.Subarea)).Replace(" (Subarea)", "");
         
         // elenco (separado por ';')
-        string? chars = TextHelper.Get(map, "characters");
+        string? chars = TextHelper.Get(map, QuestFieldNames.Characters);
         if (!string.IsNullOrWhiteSpace(chars))
         {
             foreach (string c in chars.Split(';'))

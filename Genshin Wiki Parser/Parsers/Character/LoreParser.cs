@@ -13,11 +13,11 @@ public static partial class LoreParser
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
         if (string.IsNullOrWhiteSpace(pageTitle)) return null;
-        if (!pageTitle.EndsWith("/Lore", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!pageTitle.EndsWith(WikiPageMarkers.LoreSuffix, StringComparison.OrdinalIgnoreCase)) return null;
 
         LoreDto dto = new LoreDto
         {
-            Character = pageTitle[..pageTitle.IndexOf("/Lore", StringComparison.OrdinalIgnoreCase)]
+            Character = pageTitle[..pageTitle.IndexOf(WikiPageMarkers.LoreSuffix, StringComparison.OrdinalIgnoreCase)]
         };
 
         // 1) Quotes (todas) + primeira como SummaryQuote
@@ -76,15 +76,15 @@ public static partial class LoreParser
     // ---------- OFFICIAL INTRO ----------
     private static OfficialIntroDto? ExtractOfficialIntroduction(string text)
     {
-        string? block = TextHelper.ExtractTemplateBlock(text, "Official Introduction");
+        string? block = TextHelper.ExtractTemplateBlock(text, WikiTemplates.OfficialIntroduction);
         if (block == null) return null;
 
-        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(block, "Official Introduction");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(block, WikiTemplates.OfficialIntroduction);
         OfficialIntroDto dto = new OfficialIntroDto
         {
-            Title     = TextHelper.Get(fields, "title"),
-            Link      = TextHelper.Get(fields, "link"),
-            Character = TextHelper.Get(fields, "character")
+            Title     = TextHelper.Get(fields, CommonFieldNames.Title),
+            Link      = TextHelper.Get(fields, LoreFieldNames.Link),
+            Character = TextHelper.Get(fields, LoreFieldNames.Character)
         };
 
         return TextHelper.IsEmpty(dto) ? null : dto;
@@ -93,10 +93,10 @@ public static partial class LoreParser
     // ---------- CHARACTER STORIES ----------
     private static List<CharacterStoryDto>? ExtractCharacterStories(string text)
     {
-        string? block = TextHelper.ExtractTemplateBlock(text, "Character Story");
+        string? block = TextHelper.ExtractTemplateBlock(text, WikiTemplates.CharacterStory);
         if (block == null) return null;
 
-        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(block, "Character Story");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(block, WikiTemplates.CharacterStory);
 
         // Descobrir quantos índices existem (titleN, textN, ...)
         int maxN = 0;
@@ -109,13 +109,13 @@ public static partial class LoreParser
         List<CharacterStoryDto> list = new List<CharacterStoryDto>();
         for (int n = 1; n <= maxN; n++)
         {
-            string? title = TextHelper.Get(fields, $"title{n}");
-            string textN = TextHelper.CleanText(TextHelper.Get(fields, $"text{n}"));
-            string? frStr = TextHelper.Get(fields, $"friendship{n}");
+            string? title = TextHelper.Get(fields, $"{LoreFieldNames.TitlePrefix}{n}");
+            string textN = TextHelper.CleanText(TextHelper.Get(fields, $"{LoreFieldNames.TextPrefix}{n}"));
+            string? frStr = TextHelper.Get(fields, $"{LoreFieldNames.FriendshipPrefix}{n}");
             int? friendship = null;
             if (int.TryParse(frStr, out int f)) friendship = f;
 
-            string? mentionsStr = TextHelper.Get(fields, $"mention{n}");
+            string? mentionsStr = TextHelper.Get(fields, $"{LoreFieldNames.MentionPrefix}{n}");
             List<string>? mentions = null;
             if (!string.IsNullOrWhiteSpace(mentionsStr))
             {

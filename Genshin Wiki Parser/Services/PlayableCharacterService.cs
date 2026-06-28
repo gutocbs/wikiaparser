@@ -56,7 +56,7 @@ public class PlayableCharacterService
             return true;
         }
         
-        if(page.title.Contains("/Lore", StringComparison.OrdinalIgnoreCase))
+        if(page.title.Contains(WikiPageMarkers.LoreSuffix, StringComparison.OrdinalIgnoreCase))
         {
             // 2) Tenta parsear Lore (só faz sentido em páginas X/Lore)
             LoreDto? lore = LoreParser.TryParse(wikiText, page.title);
@@ -71,7 +71,7 @@ public class PlayableCharacterService
             }
         }
         
-        if(page.title.Contains("/Voice-Overs", StringComparison.OrdinalIgnoreCase))
+        if(page.title.Contains(WikiPageMarkers.VoiceOversSuffix, StringComparison.OrdinalIgnoreCase))
         {
             // 2) Tenta parsear
             
@@ -87,7 +87,7 @@ public class PlayableCharacterService
             }
         }
         
-        if(page.title.Contains("/Companion", StringComparison.OrdinalIgnoreCase))
+        if(page.title.Contains(WikiPageMarkers.CompanionSuffix, StringComparison.OrdinalIgnoreCase))
         {
             CompanionDto? companion = CompanionParser.TryParse(wikiText, page.title);
             if (companion != null)
@@ -102,7 +102,7 @@ public class PlayableCharacterService
         }
 
         //Namecard, tenta parsear
-        if(page.title.Contains(":", StringComparison.OrdinalIgnoreCase) && wikiText.Contains("is a [[Namecard]] obtained by", StringComparison.OrdinalIgnoreCase))
+        if(page.title.Contains(":", StringComparison.OrdinalIgnoreCase) && wikiText.Contains(WikiPageMarkers.NamecardAcquisitionText, StringComparison.OrdinalIgnoreCase))
         {
             NamecardDto? namecard = NamecardParser.TryParse(wikiText, page.title);
             if (namecard != null)

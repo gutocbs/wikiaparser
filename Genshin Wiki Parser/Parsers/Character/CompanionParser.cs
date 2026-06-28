@@ -19,7 +19,7 @@ public static partial class CompanionParser
     {
         if (string.IsNullOrWhiteSpace(wikitext) || string.IsNullOrWhiteSpace(pageTitle))
             return null;
-        if (!pageTitle.EndsWith("/Companion", StringComparison.OrdinalIgnoreCase))
+        if (!pageTitle.EndsWith(WikiPageMarkers.CompanionSuffix, StringComparison.OrdinalIgnoreCase))
             return null;
 
         string character = TextHelper.BaseCharacterFromTitle(pageTitle);
@@ -209,7 +209,7 @@ public static partial class CompanionParser
                 string spoken = TextHelper.CleanText(RemoveSpeakerBold(remainder));
 
                 if (!string.IsNullOrWhiteSpace(spoken) || (audio?.Count ?? 0) > 0)
-                    entries.Add(new CompanionDialogueEntryDto { Role = "NPC", Text = spoken, AudioFiles = audio, ChoiceGroup = currentChoiceGroup });
+                    entries.Add(new CompanionDialogueEntryDto { Role = DialogueRoleNames.Npc, Text = spoken, AudioFiles = audio, ChoiceGroup = currentChoiceGroup });
 
                 continue;
             }
@@ -222,7 +222,7 @@ public static partial class CompanionParser
                 string spoken = TextHelper.CleanText(RemoveSpeakerBold(remainder));
 
                 if (!string.IsNullOrWhiteSpace(spoken) || (audio?.Count ?? 0) > 0)
-                    entries.Add(new CompanionDialogueEntryDto { Role = "NPC", Text = spoken, AudioFiles = audio, ChoiceGroup = currentChoiceGroup });
+                    entries.Add(new CompanionDialogueEntryDto { Role = DialogueRoleNames.Npc, Text = spoken, AudioFiles = audio, ChoiceGroup = currentChoiceGroup });
 
                 continue;
             }

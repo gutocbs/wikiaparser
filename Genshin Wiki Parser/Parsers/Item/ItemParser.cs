@@ -8,24 +8,24 @@ public static class ItemParser
     public static ItemDto? TryParse(string wikiText, string pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikiText)) return null;
-        if (!wikiText.Contains("{{Item Infobox", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!wikiText.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.ItemInfobox}", StringComparison.OrdinalIgnoreCase)) return null;
 
         ItemDto dto = new ItemDto { Title = pageTitle };
 
         // 1) Infobox
-        string infobox = TextHelper.ExtractTemplate("Item Infobox", wikiText);
+        string infobox = TextHelper.ExtractTemplate(WikiTemplates.ItemInfobox, wikiText);
         Dictionary<string, string> map  = TextHelper.ParseTemplateParams(infobox);
 
-        dto.Id          = TextHelper.TryInt(TextHelper.Get(map, "id"));
-        dto.Type        = TextHelper.Get(map, "type");
-        dto.Group       = TextHelper.Get(map, "group");
-        dto.Quality     = TextHelper.TryInt(TextHelper.Get(map, "quality")) ?? TextHelper.TryInt(TextHelper.Get(map, "rarity")) ?? TextHelper.TryInt(TextHelper.Get(map, "stars"));
-        dto.Description = TextHelper.CleanText(TextHelper.Get(map, "description"));
-        if (dto.Description.Contains("Character Ascension material"))
+        dto.Id          = TextHelper.TryInt(TextHelper.Get(map, CommonFieldNames.Id));
+        dto.Type        = TextHelper.Get(map, CommonFieldNames.Type);
+        dto.Group       = TextHelper.Get(map, CommonFieldNames.Group);
+        dto.Quality     = TextHelper.TryInt(TextHelper.Get(map, CommonFieldNames.Quality)) ?? TextHelper.TryInt(TextHelper.Get(map, ItemFieldNames.Rarity)) ?? TextHelper.TryInt(TextHelper.Get(map, ItemFieldNames.Stars));
+        dto.Description = TextHelper.CleanText(TextHelper.Get(map, CommonFieldNames.Description));
+        if (dto.Description.Contains(WikiSpecialCases.CharacterAscensionMaterial))
             dto.Description = dto.Description.Replace("Character Ascension material.\\n", "");
 
         // sources: pega TODAS as chaves que começam com "source"
-        foreach (KeyValuePair<string, string> kv in map.Where(kv => kv.Key.StartsWith("source", StringComparison.OrdinalIgnoreCase))
+        foreach (KeyValuePair<string, string> kv in map.Where(kv => kv.Key.StartsWith(CommonFieldNames.SourcePrefix, StringComparison.OrdinalIgnoreCase))
                               .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
         {
             string val = TextHelper.CleanText(kv.Value);

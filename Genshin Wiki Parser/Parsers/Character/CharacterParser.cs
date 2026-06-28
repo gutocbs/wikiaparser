@@ -16,7 +16,7 @@ public static class CharacterParser
         if (string.IsNullOrWhiteSpace(wikitext))
             return null;
         
-        string? infobox = TextHelper.ExtractTemplateBlock(wikitext, "Character Infobox");
+        string? infobox = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.CharacterInfobox);
         if (infobox == null)
             return null;
 
@@ -26,29 +26,29 @@ public static class CharacterParser
         // Montagem do DTO
         PlayableCharacterDto dto = new PlayableCharacterDto
         {
-            Type = TextHelper.Get(fields, "type"),
+            Type = TextHelper.Get(fields, CommonFieldNames.Type),
             PlayableCharacterInformation = new PlayableCharacterInformationDto
             {
-                Quality = TextHelper.Get(fields, "quality"),
-                Weapon  = TextHelper.Get(fields, "weapon"),
-                Element = TextHelper.Get(fields, "element")
+                Quality = TextHelper.Get(fields, CommonFieldNames.Quality),
+                Weapon  = TextHelper.Get(fields, CharacterFieldNames.Weapon),
+                Element = TextHelper.Get(fields, CharacterFieldNames.Element)
             },
-            Name = TextHelper.Get(fields, "name"),
+            Name = TextHelper.Get(fields, CharacterFieldNames.Name),
             CharacterInformation = new CharacterInformationDto
             {
-                RealName      = TextHelper.Get(fields, "realname"),
-                Birthday      = TextHelper.Get(fields, "birthday"),
-                Constellation = TextHelper.Get(fields, "constellation"),
-                Regions       = ExtractDetailsList(fields, "region"),
-                Affiliations  = ExtractDetailsList(fields, "affiliation"),
-                Dish          = TextHelper.Get(fields, "dish"),
-                Namecard      = TextHelper.Get(fields, "namecard"),
-                ObtainType    = TextHelper.Get(fields, "obtainType"),
-                Obtain        = TextHelper.NormalizeObtain(TextHelper.Get(fields, "obtain")),
-                ReleaseDate   = TextHelper.Get(fields, "releaseDate"),
+                RealName      = TextHelper.Get(fields, CharacterFieldNames.RealName),
+                Birthday      = TextHelper.Get(fields, CharacterFieldNames.Birthday),
+                Constellation = TextHelper.Get(fields, CharacterFieldNames.Constellation),
+                Regions       = ExtractDetailsList(fields, CommonFieldNames.Region),
+                Affiliations  = ExtractDetailsList(fields, CharacterFieldNames.Affiliation),
+                Dish          = TextHelper.Get(fields, CharacterFieldNames.Dish),
+                Namecard      = TextHelper.Get(fields, CharacterFieldNames.Namecard),
+                ObtainType    = TextHelper.Get(fields, CharacterFieldNames.ObtainType),
+                Obtain        = TextHelper.NormalizeObtain(TextHelper.Get(fields, CharacterFieldNames.Obtain)),
+                ReleaseDate   = TextHelper.Get(fields, CharacterFieldNames.ReleaseDate),
             },
-            Titles = ExtractDetailsList(fields, "title"),
-            Ancestry = TextHelper.Get(fields, "ancestry"),
+            Titles = ExtractDetailsList(fields, CommonFieldNames.Title),
+            Ancestry = TextHelper.Get(fields, CharacterFieldNames.Ancestry),
             Family = ExtractFamily(fields),
             Description = TextHelper.ExtractDescription(wikitext, infobox)
         };

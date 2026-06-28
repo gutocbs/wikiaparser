@@ -15,18 +15,18 @@ public static partial class ArtifactParser
     public static ArtifactPieceDto? TryParse(string? wikitext)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
-        if (!wikitext.Contains("{{Artifact Infobox", StringComparison.OrdinalIgnoreCase))
+        if (!wikitext.Contains($"{WikiSyntax.TemplateOpen}{WikiTemplates.ArtifactInfobox}", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Artifact Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, WikiTemplates.ArtifactInfobox);
         if (box is null) return null;
 
-        Dictionary<string, string> f = TextHelper.ParseTemplateFields(box, "Artifact Infobox");
+        Dictionary<string, string> f = TextHelper.ParseTemplateFields(box, WikiTemplates.ArtifactInfobox);
 
         // Campos básicos do infobox
-        string? set   = TextHelper.CleanInline(TextHelper.Get(f, "set"));
-        string? piece = TextHelper.CleanInline(TextHelper.Get(f, "piece"));
-        ParseImageField(TextHelper.Get(f, "image"));
+        string? set   = TextHelper.CleanInline(TextHelper.Get(f, ArtifactFieldNames.Set));
+        string? piece = TextHelper.CleanInline(TextHelper.Get(f, ArtifactFieldNames.Piece));
+        ParseImageField(TextHelper.Get(f, CommonFieldNames.Image));
 
         // Descrições
         string? shortDesc = ExtractDescriptionTemplate(wikitext);
@@ -34,7 +34,7 @@ public static partial class ArtifactParser
 
         ArtifactPieceDto dto = new ArtifactPieceDto
         {
-            Title      = TextHelper.CleanInline(TextHelper.Get(f, "title") ?? ""),
+            Title      = TextHelper.CleanInline(TextHelper.Get(f, CommonFieldNames.Title) ?? ""),
             Set        = string.IsNullOrWhiteSpace(set) ? null : set,
             Piece      = string.IsNullOrWhiteSpace(piece) ? null : piece,
             ShortDescription = shortDesc,
@@ -104,10 +104,10 @@ public static partial class ArtifactParser
 
     private static Dictionary<string,string>? ExtractOtherLanguages(string text)
     {
-        string? block = TextHelper.ExtractTemplateBlock(text, "Other Languages");
+        string? block = TextHelper.ExtractTemplateBlock(text, WikiTemplates.OtherLanguages);
         if (block is null) return null;
 
-        Dictionary<string, string> f = TextHelper.ParseTemplateFields(block, "Other Languages");
+        Dictionary<string, string> f = TextHelper.ParseTemplateFields(block, WikiTemplates.OtherLanguages);
         Dictionary<string, string?> dict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         foreach (KeyValuePair<string, string> kv in f)
@@ -130,11 +130,11 @@ public static partial class ArtifactParser
         if (string.IsNullOrWhiteSpace(piece)) return null;
         string p = piece.Trim().ToLowerInvariant();
         // cobre nomes completos e abreviações mais comuns
-        if (p.Contains("flower"))  return "Flower";   // Flower of Life
-        if (p.Contains("plume"))   return "Plume";    // Plume of Death
-        if (p.Contains("sands"))   return "Sands";    // Sands of Eon
-        if (p.Contains("goblet"))  return "Goblet";   // Goblet of Eonothem
-        if (p.Contains("circlet")) return "Circlet";  // Circlet of Logos
+        if (p.Contains(ArtifactPieceNames.FlowerMarker))  return ArtifactPieceNames.Flower;   // Flower of Life
+        if (p.Contains(ArtifactPieceNames.PlumeMarker))   return ArtifactPieceNames.Plume;    // Plume of Death
+        if (p.Contains(ArtifactPieceNames.SandsMarker))   return ArtifactPieceNames.Sands;    // Sands of Eon
+        if (p.Contains(ArtifactPieceNames.GobletMarker))  return ArtifactPieceNames.Goblet;   // Goblet of Eonothem
+        if (p.Contains(ArtifactPieceNames.CircletMarker)) return ArtifactPieceNames.Circlet;  // Circlet of Logos
         return null;
     }
     // - CleanInline(string? s)  // versão “single-line” do CleanText
