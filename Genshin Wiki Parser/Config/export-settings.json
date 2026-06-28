@@ -6,6 +6,7 @@
     "maxFiles": 50,
     "oversizeItemBehavior": "AllowSingleFile",
     "writeIndented": false,
-    "ignoreNullValues": true
+    "ignoreNullValues": true,
+    "removeStringLineBreaks": true
   }
 }

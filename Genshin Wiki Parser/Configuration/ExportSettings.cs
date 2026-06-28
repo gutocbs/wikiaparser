@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Genshin.Wiki.Parser.Services.Serialization;
 using Genshin.Wiki.Parser.Services.Sink;
 
 namespace Genshin.Wiki.Parser.Configuration;
@@ -18,15 +19,21 @@ public sealed class ShardedArraySinkSettings
     public SharedArraySink<object>.OversizeItemBehavior OversizeItemBehavior { get; set; } = SharedArraySink<object>.OversizeItemBehavior.AllowSingleFile;
     public bool WriteIndented { get; set; }
     public bool IgnoreNullValues { get; set; } = true;
+    public bool RemoveStringLineBreaks { get; set; } = true;
 
     public JsonSerializerOptions CreateJsonSerializerOptions()
     {
-        return new JsonSerializerOptions
+        JsonSerializerOptions options = new JsonSerializerOptions
         {
             WriteIndented = WriteIndented,
             DefaultIgnoreCondition = IgnoreNullValues
                 ? JsonIgnoreCondition.WhenWritingNull
                 : JsonIgnoreCondition.Never
         };
+
+        if (RemoveStringLineBreaks) 
+            options.Converters.Add(new SingleLineStringJsonConverter());
+
+        return options;
     }
 }
