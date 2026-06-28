@@ -5,6 +5,21 @@ namespace Genshin.Wiki.Parser.Helpers;
 
 public static class TextHelper
 {
+    private static readonly Regex HtmlCommentRegex = new(@"<!--.*?-->", RegexOptions.Singleline | RegexOptions.Compiled);
+    private static readonly Regex RefTagRegex = new(@"<ref[^>]*>.*?</ref>", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ParagraphTagRegex = new(@"</?p\s*?>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex BreakTagRegex = new(@"<br\s*/?>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex HtmlTagRegex = new(@"<[^>]+>", RegexOptions.Singleline | RegexOptions.Compiled);
+    private static readonly Regex ExternalLinkRegex = new(@"\[(https?://[^\s\]]+)\s+([^\]]+)\]", RegexOptions.Compiled);
+    private static readonly Regex WikiPipeLinkRegex = new(@"\[\[([^\|\]]+)\|([^\]]+)\]\]", RegexOptions.Compiled);
+    private static readonly Regex WikiLinkRegex = new(@"\[\[([^\]]+)\]\]", RegexOptions.Compiled);
+    private static readonly Regex CategoryLinkRegex = new(@"\[\:\s*Category\:([^\]]+)\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex TemplateWithPipeRegex = new(@"\{\{[^{}|]+\|([^{}]+)\}\}", RegexOptions.Compiled);
+    private static readonly Regex TemplateWithoutPipeRegex = new(@"\{\{([^{}|]+)\}\}", RegexOptions.Compiled);
+    private static readonly Regex WikiQuoteMarkupRegex = new(@"'{2,5}", RegexOptions.Compiled);
+    private static readonly Regex TrailingHorizontalWhitespaceRegex = new(@"[ \t]+\n", RegexOptions.Compiled);
+    private static readonly Regex MultipleNewLinesRegex = new(@"\n{3,}", RegexOptions.Compiled);
+
     public static Dictionary<string, string> _replacements = new(StringComparer.OrdinalIgnoreCase)
     {
         { "Cataclysm|destruction", "Cataclysm" }
@@ -351,42 +366,45 @@ public static class TextHelper
     public static string CleanText(string? v)
     {
         if (string.IsNullOrWhiteSpace(v)) return string.Empty;
+        if (v.AsSpan().IndexOfAny("<[{\'&\n") < 0)
+            return v.Trim();
+
         var s = v;
 
         // comentários HTML
-        s = Regex.Replace(s, @"<!--.*?-->", "", RegexOptions.Singleline);
+        s = HtmlCommentRegex.Replace(s, "");
 
         // <ref>...</ref> → remove (ou poderia extrair URLs, se quiser)
-        s = Regex.Replace(s, @"<ref[^>]*>.*?</ref>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        s = RefTagRegex.Replace(s, "");
 
         // <p> → quebra; outras tags → remove
-        s = Regex.Replace(s, @"</?p\s*?>", "\n\n", RegexOptions.IgnoreCase);
-        s = Regex.Replace(s, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
-        s = Regex.Replace(s, @"<[^>]+>", "", RegexOptions.Singleline);
+        s = ParagraphTagRegex.Replace(s, "\n\n");
+        s = BreakTagRegex.Replace(s, "\n");
+        s = HtmlTagRegex.Replace(s, "");
 
         // [http url texto] → "texto" (ou "texto (url)" se preferir)
-        s = Regex.Replace(s, @"\[(https?://[^\s\]]+)\s+([^\]]+)\]", "$2");
+        s = ExternalLinkRegex.Replace(s, "$2");
 
         // links wiki
-        s = Regex.Replace(s, @"\[\[([^\|\]]+)\|([^\]]+)\]\]", "$2"); // [[A|B]]→B
-        s = Regex.Replace(s, @"\[\[([^\]]+)\]\]", "$1");             // [[A]]→A
-        s = Regex.Replace(s, @"\[\:\s*Category\:([^\]]+)\]", "$1", RegexOptions.IgnoreCase);
+        s = WikiPipeLinkRegex.Replace(s, "$2"); // [[A|B]]→B
+        s = WikiLinkRegex.Replace(s, "$1");     // [[A]]→A
+        s = CategoryLinkRegex.Replace(s, "$1");
 
         // templates COM pipe: {{x|Y}} → Y (melhor esforço)
-        s = Regex.Replace(s, @"\{\{[^{}|]+\|([^{}]+)\}\}", "$1");
+        s = TemplateWithPipeRegex.Replace(s, "$1");
 
         // templates SEM pipe: {{Cryo}} → Cryo ; {{sic|[[Akasha]]}} já caiu na regra com pipe acima
-        s = Regex.Replace(s, @"\{\{([^{}|]+)\}\}", "$1");
+        s = TemplateWithoutPipeRegex.Replace(s, "$1");
 
         // negrito/itálico de wiki
-        s = Regex.Replace(s, @"'{2,5}", "");
+        s = WikiQuoteMarkupRegex.Replace(s, "");
 
         // entidades comuns
         s = s.Replace("&mdash;", "—");
 
         // normaliza quebras múltiplas
-        s = Regex.Replace(s, @"[ \t]+\n", "\n");
-        s = Regex.Replace(s, @"\n{3,}", "\n\n");
+        s = TrailingHorizontalWhitespaceRegex.Replace(s, "\n");
+        s = MultipleNewLinesRegex.Replace(s, "\n\n");
 
         return s.Trim();
     }
