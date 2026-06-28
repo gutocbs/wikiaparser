@@ -1,5 +1,4 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using Genshin.Wiki.Parser.Configuration;
 using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
 
@@ -11,6 +10,7 @@ public static class MultiSinkExporter
         IEnumerable<Page?> pages,
         IEnumerable<ParserRegistration> parsers,
         string outputDir,
+        ExportSettings exportSettings,
         Func<Page, bool>? pagePredicate = null, // filtro extra (ex.: ignore list),
         string fileExtension = "txt"
     )
@@ -24,15 +24,11 @@ public static class MultiSinkExporter
                 outRoot: Path.Combine(outputDir),
                 fileExtension: fileExtension,
                 filePrefix: parser.Key,
-                maxBytesPerFile: 200L * 1024 * 1024,
-                maxWordsPerFile: 500_000,
-                maxFiles: 50,
-                oversizeBehavior: SharedArraySink<object>.OversizeItemBehavior.AllowSingleFile,
-                jsonOptions: new JsonSerializerOptions
-                {
-                    WriteIndented = false,
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                }
+                maxBytesPerFile: exportSettings.ShardedArraySink.MaxBytesPerFile,
+                maxWordsPerFile: exportSettings.ShardedArraySink.MaxWordsPerFile,
+                maxFiles: exportSettings.ShardedArraySink.MaxFiles,
+                oversizeBehavior: exportSettings.ShardedArraySink.OversizeItemBehavior,
+                jsonOptions: exportSettings.ShardedArraySink.CreateJsonSerializerOptions()
             );
         }
 

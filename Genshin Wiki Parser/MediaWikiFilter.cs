@@ -1,4 +1,4 @@
-using Genshin.Wiki.Parser.Enum;
+using Genshin.Wiki.Parser.Configuration;
 using Genshin.Wiki.Parser.Helpers;
 using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
@@ -12,24 +12,12 @@ public static class MediaWikiFilter
     public static void Process(
         string inputPath,
         string ignoreListPath,
-        string outputPath)
+        string outputPath,
+        IEnumerable<ParserRegistration> parsers,
+        ExportSettings exportSettings)
     {
         (HashSet<string> ignoreTitles, List<string> ignoreKeywords) = IgnoreListHelper.Load(ignoreListPath);
-
-        List<ParserRegistration> parsers =
-        [
-            new("playableCharacters", ObjectTypeEnum.PlayableCharacter, true, ShardMode.Count, 50),
-            new("npcs", ObjectTypeEnum.NonPlayableCharacter, true, ShardMode.Count, 250),
-            new("quest", ObjectTypeEnum.Quest, true, ShardMode.Count, 100),
-            new("weapons", ObjectTypeEnum.Weapon, true),
-            new("artifacts", ObjectTypeEnum.Artifact, true),
-            new("enemy", ObjectTypeEnum.Enemy, true),
-            new("factions", ObjectTypeEnum.Faction, true),
-            new("books", ObjectTypeEnum.Book, true),
-            new("location", ObjectTypeEnum.Location, true),
-            new("item", ObjectTypeEnum.Item, true),
-            new("furnishing", ObjectTypeEnum.Furnishing, true)
-        ];
+        ParserRegistration[] parserRegistrations = parsers as ParserRegistration[] ?? parsers.ToArray();
 
         PlayableCharacterService playableCharacterService = new();
         WeaponService weaponService = new();
@@ -80,10 +68,11 @@ public static class MediaWikiFilter
         // such as Lore, Voice-Overs and Namecards to already parsed character DTOs.
         MultiSinkExporter.ExportPerType(
             pages: parsedPages,
-            parsers: parsers,
+            parsers: parserRegistrations,
             outputDir: outputPath,
+            exportSettings: exportSettings,
             pagePredicate: static page => page.About is not null,
-            fileExtension: "txt"
+            fileExtension: exportSettings.DefaultFileExtension
         );
     }
 

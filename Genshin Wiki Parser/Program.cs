@@ -1,11 +1,17 @@
+using Genshin.Wiki.Parser.Configuration;
+
 namespace Genshin.Wiki.Parser;
 
 class Program
 {
     static void Main(string[] args)
     {
-        string inputFile = "gensinimpact_pages_current.xml";
-        string outputPath = "files";
+        RuntimeSettings runtimeSettings = JsonConfigReader.Load<RuntimeSettings>("runtime-settings.json");
+        ParserRegistrationSettings parserRegistrationSettings = JsonConfigReader.Load<ParserRegistrationSettings>("parser-registrations.json");
+        ExportSettings exportSettings = JsonConfigReader.Load<ExportSettings>("export-settings.json");
+
+        string inputFile = runtimeSettings.Defaults.InputFile;
+        string outputPath = runtimeSettings.Defaults.OutputPath;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -15,17 +21,24 @@ class Program
                 outputPath = args[i + 1];
         }
 
-        string path = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
-        path = Path.Combine(path, inputFile);
+        string path = ResolveFromBaseDirectory(inputFile);
 
         Console.WriteLine("Reading file " + path);
 
         MediaWikiFilter.Process(
             path,
-            ignoreListPath: "IgnoreList.json",
-            outputPath: outputPath
+            ignoreListPath: ResolveFromBaseDirectory(runtimeSettings.Defaults.IgnoreListPath),
+            outputPath: outputPath,
+            parsers: parserRegistrationSettings.ToParserRegistrations(),
+            exportSettings: exportSettings
         );
 
         Console.WriteLine("File parserd successfully!");
+    }
+
+    private static string ResolveFromBaseDirectory(string path)
+    {
+        if (Path.IsPathRooted(path)) return path;
+        return Path.Combine(AppContext.BaseDirectory, path);
     }
 }
