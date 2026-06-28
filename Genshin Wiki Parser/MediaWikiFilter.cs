@@ -1,4 +1,3 @@
-using System.Xml;
 using Genshin.Wiki.Parser.Enum;
 using Genshin.Wiki.Parser.Helpers;
 using Genshin.Wiki.Parser.Models.Parse;
@@ -44,9 +43,11 @@ public static class MediaWikiFilter
         FurnishingService furnishingService = new();
         QuestService questService = new();
 
-        var parsedPages = new List<Page>();
+        List<Page> parsedPages = new List<Page>();
 
-        foreach (Page page in ReadPages(inputPath, ignoreTitles, ignoreKeywords))
+        foreach (Page page in MediaWikiPageReader.ReadPages(
+                     inputPath,
+                     title => IgnoreListHelper.ShouldIgnore(title, ignoreTitles, ignoreKeywords)))
         {
             string wikiText = page.revision.text.content;
             if (string.IsNullOrWhiteSpace(wikiText)) continue;
@@ -56,7 +57,7 @@ public static class MediaWikiFilter
             string key = TextHelper.GetBaseKey(page.title);
             if (string.IsNullOrEmpty(key)) continue;
 
-            var parsed = playableCharacterService.Set(page, wikiText, key);
+            bool parsed = playableCharacterService.Set(page, wikiText, key);
             if (!parsed) parsed = weaponService.Set(page, wikiText, key);
             if (!parsed) parsed = artifactService.Set(page, wikiText, key);
             if (!parsed) parsed = npcService.Set(page, wikiText, key);
@@ -70,7 +71,7 @@ public static class MediaWikiFilter
 
             if (page.About is null) continue;
 
-            // Keep parsed DTOs for final export, but release the raw wikitext immediately.
+            // Keep parsed DTOs for final export but release the raw wikitext immediately.
             page.revision.text.content = string.Empty;
             parsedPages.Add(page);
         }
@@ -86,91 +87,4 @@ public static class MediaWikiFilter
         );
     }
 
-    private static IEnumerable<Page> ReadPages(
-        string inputPath,
-        HashSet<string> ignoreTitles,
-        List<string> ignoreKeywords)
-    {
-        var settings = new XmlReaderSettings
-        {
-            DtdProcessing = DtdProcessing.Ignore,
-            IgnoreComments = true,
-            IgnoreProcessingInstructions = true
-        };
-
-        using var stream = new FileStream(inputPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1024 * 128);
-        using var reader = XmlReader.Create(stream, settings);
-
-        while (reader.Read())
-        {
-            if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "page") continue;
-
-            using var pageReader = reader.ReadSubtree();
-            Page? page = ReadPage(pageReader, ignoreTitles, ignoreKeywords);
-            if (page is not null) yield return page;
-        }
-    }
-
-    private static Page? ReadPage(
-        XmlReader reader,
-        HashSet<string> ignoreTitles,
-        List<string> ignoreKeywords)
-    {
-        var page = new Page
-        {
-            title = string.Empty,
-            id = null,
-            revision = new Revision
-            {
-                text = new Text { content = string.Empty }
-            }
-        };
-
-        while (reader.Read())
-        {
-            if (reader.NodeType != XmlNodeType.Element) continue;
-
-            switch (reader.LocalName)
-            {
-                case "title":
-                    page.title = reader.ReadElementContentAsString();
-                    if (IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords))
-                    {
-                        return null;
-                    }
-
-                    break;
-                case "id" when page.id is null:
-                    page.id = reader.ReadElementContentAsString();
-                    break;
-                case "revision":
-                    using (var revisionReader = reader.ReadSubtree())
-                    {
-                        page.revision = ReadRevision(revisionReader);
-                    }
-                    break;
-            }
-        }
-
-        return string.IsNullOrWhiteSpace(page.title) ? null : page;
-    }
-
-    private static Revision ReadRevision(XmlReader reader)
-    {
-        var revision = new Revision
-        {
-            text = new Text { content = string.Empty }
-        };
-
-        while (reader.Read())
-        {
-            if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "text")
-            {
-                revision.text.content = reader.ReadElementContentAsString();
-                break;
-            }
-        }
-
-        return revision;
-    }
 }
