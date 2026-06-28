@@ -46,12 +46,11 @@ public static class MediaWikiFilter
 
         var parsedPages = new List<Page>();
 
-        foreach (Page page in ReadPages(inputPath))
+        foreach (Page page in ReadPages(inputPath, ignoreTitles, ignoreKeywords))
         {
             string wikiText = page.revision.text.content;
             if (string.IsNullOrWhiteSpace(wikiText)) continue;
 
-            if (IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords)) continue;
             if (IgnoreListHelper.ShouldIgnore(wikiText, ignoreKeywords)) continue;
 
             string key = TextHelper.GetBaseKey(page.title);
@@ -87,7 +86,10 @@ public static class MediaWikiFilter
         );
     }
 
-    private static IEnumerable<Page> ReadPages(string inputPath)
+    private static IEnumerable<Page> ReadPages(
+        string inputPath,
+        HashSet<string> ignoreTitles,
+        List<string> ignoreKeywords)
     {
         var settings = new XmlReaderSettings
         {
@@ -104,12 +106,15 @@ public static class MediaWikiFilter
             if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "page") continue;
 
             using var pageReader = reader.ReadSubtree();
-            Page? page = ReadPage(pageReader);
+            Page? page = ReadPage(pageReader, ignoreTitles, ignoreKeywords);
             if (page is not null) yield return page;
         }
     }
 
-    private static Page? ReadPage(XmlReader reader)
+    private static Page? ReadPage(
+        XmlReader reader,
+        HashSet<string> ignoreTitles,
+        List<string> ignoreKeywords)
     {
         var page = new Page
         {
@@ -129,6 +134,11 @@ public static class MediaWikiFilter
             {
                 case "title":
                     page.title = reader.ReadElementContentAsString();
+                    if (IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords))
+                    {
+                        return null;
+                    }
+
                     break;
                 case "id" when page.id is null:
                     page.id = reader.ReadElementContentAsString();
@@ -157,6 +167,7 @@ public static class MediaWikiFilter
             if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "text")
             {
                 revision.text.content = reader.ReadElementContentAsString();
+                break;
             }
         }
 
