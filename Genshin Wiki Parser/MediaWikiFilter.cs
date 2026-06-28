@@ -5,36 +5,18 @@ using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
 using Genshin.Wiki.Parser.Services;
 using Genshin.Wiki.Parser.Services.Sink;
-using Newtonsoft.Json;
-using Formatting = Newtonsoft.Json.Formatting;
 
 namespace Genshin.Wiki.Parser;
 
 public static class MediaWikiFilter
 {
     public static void Process(
-        XmlDocument doc,
+        string inputPath,
         string ignoreListPath,
         string outputPath)
     {
-        // 1) Carrega ignore list
         (HashSet<string> ignoreTitles, List<string> ignoreKeywords) = IgnoreListHelper.Load(ignoreListPath);
-        
-        bool ShouldParse(Page page)
-        {
-            return !IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords) && 
-                   !IgnoreListHelper.ShouldIgnore(page.revision.text.content, ignoreKeywords);
-        }
-        
-        bool PagePredicate(Page page)
-        {
-            if (IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords))
-                return false;
-            if (IgnoreListHelper.ShouldIgnore(page.revision.text.content, ignoreKeywords))
-                return false;
-            return page.About is not null;
-        }
-        
+
         List<ParserRegistration> parsers =
         [
             new("playableCharacters", ObjectTypeEnum.PlayableCharacter, true, ShardMode.Count, 50),
@@ -50,106 +32,134 @@ public static class MediaWikiFilter
             new("furnishing", ObjectTypeEnum.Furnishing, true)
         ];
 
-        // 2) Converte XML -> JSON direto para um arquivo temp (sem string gigante)
-        string tempJsonPath = Path.GetTempFileName();
-        using (FileStream fs = new FileStream(tempJsonPath, FileMode.Create, FileAccess.Write, FileShare.None))
-        using (StreamWriter sw = new StreamWriter(fs))
-        using (JsonTextWriter jw = new JsonTextWriter(sw))
+        PlayableCharacterService playableCharacterService = new();
+        WeaponService weaponService = new();
+        ArtifactService artifactService = new();
+        NpcService npcService = new();
+        EnemyService enemyService = new();
+        FactionService factionService = new();
+        BookService bookService = new();
+        LocationService locationService = new();
+        ItemService itemService = new();
+        FurnishingService furnishingService = new();
+        QuestService questService = new();
+
+        var parsedPages = new List<Page>();
+
+        foreach (Page page in ReadPages(inputPath))
         {
-            jw.Formatting = Formatting.None;
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.Serialize(jw, doc); // <- escreve JSON direto no arquivo
+            string wikiText = page.revision.text.content;
+            if (string.IsNullOrWhiteSpace(wikiText)) continue;
+
+            if (IgnoreListHelper.ShouldIgnore(page.title, ignoreTitles, ignoreKeywords)) continue;
+            if (IgnoreListHelper.ShouldIgnore(wikiText, ignoreKeywords)) continue;
+
+            string key = TextHelper.GetBaseKey(page.title);
+            if (string.IsNullOrEmpty(key)) continue;
+
+            var parsed = playableCharacterService.Set(page, wikiText, key);
+            if (!parsed) parsed = weaponService.Set(page, wikiText, key);
+            if (!parsed) parsed = artifactService.Set(page, wikiText, key);
+            if (!parsed) parsed = npcService.Set(page, wikiText, key);
+            if (!parsed) parsed = enemyService.Set(page, wikiText, key);
+            if (!parsed) parsed = factionService.Set(page, wikiText, key);
+            if (!parsed) parsed = bookService.Set(page, wikiText, key);
+            if (!parsed) parsed = locationService.Set(page, wikiText, key);
+            if (!parsed) parsed = itemService.Set(page, wikiText, key);
+            if (!parsed) parsed = furnishingService.Set(page, wikiText, key);
+            if (!parsed) questService.Set(page, wikiText, key);
+
+            if (page.About is null) continue;
+
+            // Keep parsed DTOs for final export, but release the raw wikitext immediately.
+            page.revision.text.content = string.Empty;
+            parsedPages.Add(page);
         }
 
-        // 3) Desserializa do temp para seu objeto Root (sem manter string)
-        Root? root;
-        using (FileStream fs = new FileStream(tempJsonPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-        using (StreamReader sr = new StreamReader(fs))
-        using (JsonTextReader jr = new JsonTextReader(sr))
-        {
-            JsonSerializer serializer = new JsonSerializer();
-            root = serializer.Deserialize<Root>(jr);
-        }
-
-        // 4) Aplica o filtro (remove páginas por título)
-        if (root?.mediawiki.pages != null)
-        {
-            root.mediawiki.pages = root.mediawiki.pages
-                .Where(p => !IgnoreListHelper.ShouldIgnore(p.title, ignoreTitles, ignoreKeywords))
-                .ToList();
-            root.mediawiki.pages = root.mediawiki.pages
-                .Where(p => !IgnoreListHelper.ShouldIgnore(p.revision.text.content, ignoreKeywords))
-                .ToList();
-        }
-
-        if (root?.mediawiki.pages != null)
-        {
-            PlayableCharacterService playableCharacterService = new PlayableCharacterService();
-            WeaponService weaponService = new WeaponService();
-            ArtifactService artifactService = new ArtifactService();
-            NpcService npcService = new NpcService();
-            EnemyService enemyService = new EnemyService();
-            FactionService factionService = new FactionService();
-            BookService bookService = new BookService();
-            LocationService locationService = new LocationService();
-            ItemService itemService = new ItemService();
-            FurnishingService furnishingService = new FurnishingService();
-            QuestService questService = new QuestService();
-            foreach (Page page in root.mediawiki.pages)
-            {
-                string wikiText = page.revision.text.content;
-                if (string.IsNullOrWhiteSpace(wikiText)) continue;
-
-                if (!ShouldParse(page)) continue;
-                
-                string key = TextHelper.GetBaseKey(page.title);
-                if (string.IsNullOrEmpty(key)) continue;
-
-                var parsed = playableCharacterService.Set(page, wikiText, key);
-                //If was able to get the object, skip to next page
-                if(parsed) continue;
-                
-                parsed = weaponService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = artifactService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = npcService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = enemyService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = factionService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = bookService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = locationService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = itemService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                parsed = furnishingService.Set(page, wikiText, key);
-                if(parsed) continue;
-                
-                questService.Set(page, wikiText, key);
-            }
-        }
-        
-        //I'm exporting as txt to use with NotebookLM, as it does not accept json files
+        // Export after all pages were visited so services can attach late companion data
+        // such as Lore, Voice-Overs and Namecards to already parsed character DTOs.
         MultiSinkExporter.ExportPerType(
-            pages: root!.mediawiki.pages,
+            pages: parsedPages,
             parsers: parsers,
             outputDir: outputPath,
-            pagePredicate: PagePredicate,
+            pagePredicate: static page => page.About is not null,
             fileExtension: "txt"
         );
+    }
 
-        // 6) Limpeza do temp
-        try { File.Delete(tempJsonPath); } catch { /* noop */ }
+    private static IEnumerable<Page> ReadPages(string inputPath)
+    {
+        var settings = new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Ignore,
+            IgnoreComments = true,
+            IgnoreProcessingInstructions = true
+        };
+
+        using var stream = new FileStream(inputPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1024 * 128);
+        using var reader = XmlReader.Create(stream, settings);
+
+        while (reader.Read())
+        {
+            if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "page") continue;
+
+            using var pageReader = reader.ReadSubtree();
+            Page? page = ReadPage(pageReader);
+            if (page is not null) yield return page;
+        }
+    }
+
+    private static Page? ReadPage(XmlReader reader)
+    {
+        var page = new Page
+        {
+            title = string.Empty,
+            id = null,
+            revision = new Revision
+            {
+                text = new Text { content = string.Empty }
+            }
+        };
+
+        while (reader.Read())
+        {
+            if (reader.NodeType != XmlNodeType.Element) continue;
+
+            switch (reader.LocalName)
+            {
+                case "title":
+                    page.title = reader.ReadElementContentAsString();
+                    break;
+                case "id" when page.id is null:
+                    page.id = reader.ReadElementContentAsString();
+                    break;
+                case "revision":
+                    using (var revisionReader = reader.ReadSubtree())
+                    {
+                        page.revision = ReadRevision(revisionReader);
+                    }
+                    break;
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(page.title) ? null : page;
+    }
+
+    private static Revision ReadRevision(XmlReader reader)
+    {
+        var revision = new Revision
+        {
+            text = new Text { content = string.Empty }
+        };
+
+        while (reader.Read())
+        {
+            if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "text")
+            {
+                revision.text.content = reader.ReadElementContentAsString();
+            }
+        }
+
+        return revision;
     }
 }
