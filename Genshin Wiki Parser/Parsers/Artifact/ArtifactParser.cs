@@ -137,5 +137,4 @@ public static partial class ArtifactParser
         if (p.Contains(ArtifactPieceNames.CircletMarker)) return ArtifactPieceNames.Circlet;  // Circlet of Logos
         return null;
     }
-    // - CleanInline(string? s)  // versão “single-line” do CleanText
 }
