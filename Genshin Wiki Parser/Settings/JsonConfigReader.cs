@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Genshin.Wiki.Parser.Configuration;
+namespace Genshin.Wiki.Parser.Settings;
 
 public static class JsonConfigReader
 {

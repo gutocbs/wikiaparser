@@ -1,4 +1,4 @@
-using Genshin.Wiki.Parser.Configuration;
+using Genshin.Wiki.Parser.Settings;
 
 namespace Genshin.Wiki.Parser;
 

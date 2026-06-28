@@ -1,9 +1,9 @@
-using Genshin.Wiki.Parser.Configuration;
 using Genshin.Wiki.Parser.Helpers;
 using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
 using Genshin.Wiki.Parser.Services;
 using Genshin.Wiki.Parser.Services.Sink;
+using Genshin.Wiki.Parser.Settings;
 
 namespace Genshin.Wiki.Parser;
 

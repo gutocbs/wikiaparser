@@ -1,7 +1,7 @@
 using Genshin.Wiki.Parser.Enum;
 using Genshin.Wiki.Parser.Models.Parse;
 
-namespace Genshin.Wiki.Parser.Configuration;
+namespace Genshin.Wiki.Parser.Settings;
 
 public sealed class ParserRegistrationSettings
 {

@@ -1,4 +1,4 @@
-namespace Genshin.Wiki.Parser.Configuration;
+namespace Genshin.Wiki.Parser.Settings;
 
 public sealed class RuntimeSettings
 {
