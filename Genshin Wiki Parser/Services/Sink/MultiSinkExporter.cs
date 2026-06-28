@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Genshin.Wiki.Parser.Models.Parse;
 using Genshin.Wiki.Parser.Models.XML;
 
@@ -27,19 +28,23 @@ public static class MultiSinkExporter
                 maxWordsPerFile: 500_000,
                 maxFiles: 50,
                 oversizeBehavior: SharedArraySink<object>.OversizeItemBehavior.AllowSingleFile,
-                jsonOptions: new JsonSerializerOptions { WriteIndented = false }
+                jsonOptions: new JsonSerializerOptions
+                {
+                    WriteIndented = false,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                }
             );
         }
 
         try
         {
 
-            foreach (var page in pages)
+            foreach (Page? page in pages)
             {
                 if (page == null) continue;
                 if (pagePredicate != null && !pagePredicate(page)) continue;
 
-                foreach (var p in parsers)
+                foreach (ParserRegistration p in parsers)
                 {
                     if (page.About == null) continue;
 
@@ -53,7 +58,7 @@ public static class MultiSinkExporter
         finally
         {
             // fecha todos os arquivos mesmo se der erro
-            foreach (var s in sinks.Values) s.Dispose();
+            foreach (SharedArraySink<object> s in sinks.Values) s.Dispose();
         }
     }
 }

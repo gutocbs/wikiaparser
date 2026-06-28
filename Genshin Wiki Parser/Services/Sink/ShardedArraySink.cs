@@ -1,5 +1,7 @@
+using System.Buffers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Genshin.Wiki.Parser.Services.Sink;
@@ -56,7 +58,8 @@ public sealed class SharedArraySink<T> : IDisposable
 
         _jsonOptions = jsonOptions ?? new JsonSerializerOptions
         {
-            WriteIndented = false
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
         // Vamos gravar em UTF-8 (padrão e o melhor pro tamanho)
@@ -74,8 +77,9 @@ public sealed class SharedArraySink<T> : IDisposable
 
         // Contagem aproximada de “palavras” com base no JSON serializado
         // (NotebookLM não documenta exatamente, mas isso segura bem o limite)
-        string itemText = _encoding.GetString(itemUtf8);
-        int itemWords = CountWords(itemText);
+        int itemWords = _encoding.CodePage == Encoding.UTF8.CodePage
+            ? CountWords(itemUtf8)
+            : CountWords(_encoding.GetString(itemUtf8));
 
         // Bytes extras por item (separador + item)
         int separatorBytes = _firstItemInFile ? 0 : 1; // ","
@@ -202,6 +206,43 @@ public sealed class SharedArraySink<T> : IDisposable
             {
                 inWord = false;
             }
+        }
+
+        return count;
+    }
+
+    private static int CountWords(ReadOnlySpan<byte> utf8)
+    {
+        // Evita materializar uma string só para contar as palavras do JSON serializado.
+        int count = 0;
+        bool inWord = false;
+        int offset = 0;
+
+        while (offset < utf8.Length)
+        {
+            OperationStatus status = Rune.DecodeFromUtf8(utf8[offset..], out Rune rune, out int bytesConsumed);
+
+            if (status != OperationStatus.Done || bytesConsumed <= 0)
+            {
+                inWord = false;
+                offset++;
+                continue;
+            }
+
+            if (Rune.IsLetterOrDigit(rune))
+            {
+                if (!inWord)
+                {
+                    inWord = true;
+                    count++;
+                }
+            }
+            else
+            {
+                inWord = false;
+            }
+
+            offset += bytesConsumed;
         }
 
         return count;
