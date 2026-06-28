@@ -7,6 +7,9 @@ internal static partial class HtmlPatterns
     [GeneratedRegex(@"<!--.*?-->", RegexOptions.Singleline)]
     public static partial Regex HtmlComment();
 
+    [GeneratedRegex(@"<!--.*\z", RegexOptions.Singleline)]
+    public static partial Regex UnclosedHtmlComment();
+
     [GeneratedRegex(@"<ref[^>]*>.*?</ref>", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
     public static partial Regex RefTag();
 

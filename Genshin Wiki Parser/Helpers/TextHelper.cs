@@ -169,6 +169,7 @@ public static partial class TextHelper
 
         // remove comentários HTML
         s = HtmlPatterns.HtmlComment().Replace(s, "");
+        s = HtmlPatterns.UnclosedHtmlComment().Replace(s, "");
 
         // bullets começam com "*"
         s = TextCleanupPatterns.LeadingBullet().Replace(s, "\n*");
@@ -360,6 +361,7 @@ public static partial class TextHelper
 
         // comentários HTML
         s = HtmlPatterns.HtmlComment().Replace(s, "");
+        s = HtmlPatterns.UnclosedHtmlComment().Replace(s, "");
 
         // <ref>...</ref> → remove (ou poderia extrair URLs, se quiser)
         s = HtmlPatterns.RefTag().Replace(s, "");
