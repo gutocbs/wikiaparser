@@ -12,18 +12,18 @@ public static class EnemyParser
         if (!wikitext.Contains("{{Enemy Infobox", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var box = TextHelper.ExtractTemplateBlock(wikitext, "Enemy Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Enemy Infobox");
         if (box is null) return null;
 
-        var fields = TextHelper.ParseTemplateFields(box, "Enemy Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Enemy Infobox");
 
         // --- tipo / family / group
-        var type    = TextHelper.CleanInline(TextHelper.Get(fields, "type"));
-        var family  = TextHelper.CleanInline(TextHelper.Get(fields, "family"));
-        var group   = TextHelper.CleanInline(TextHelper.Get(fields, "group"));
-        var title   = TextHelper.CleanInline(TextHelper.Get(fields, "title"));
+        string? type    = TextHelper.CleanInline(TextHelper.Get(fields, "type"));
+        string? family  = TextHelper.CleanInline(TextHelper.Get(fields, "family"));
+        string? group   = TextHelper.CleanInline(TextHelper.Get(fields, "group"));
+        string? title   = TextHelper.CleanInline(TextHelper.Get(fields, "title"));
 
-        var dto = new EnemyDto
+        EnemyDto dto = new EnemyDto
         {
             Name        = TextHelper.CleanInline(pageTitle ?? ""),
             Title        = title,

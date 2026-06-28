@@ -18,24 +18,24 @@ public static partial class NamecardParser
             return null;
 
         // precisa ter "Item Infobox"
-        var box = TextHelper.ExtractTemplateBlock(wikitext, "Item Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Item Infobox");
         if (box is null) return null;
 
-        var fields = TextHelper.ParseTemplateFields(box, "Item Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Item Infobox");
 
         // checa se é Namecard
-        var type  = TextHelper.Get(fields, "type");
-        var group = TextHelper.Get(fields, "group");
+        string? type  = TextHelper.Get(fields, "type");
+        string? group = TextHelper.Get(fields, "group");
         if (!TextHelper.ContainsIgnoreCase(type, "Namecard") && !TextHelper.ContainsIgnoreCase(group, "Namecard"))
             return null;
 
         // título e personagem
-        var (character, fullTitle) = SplitNamecardTitle(pageTitle);
+        (string character, string fullTitle) = SplitNamecardTitle(pageTitle);
 
         // campos simples
-        int? TryInt(string? s) => int.TryParse(s?.Trim(), out var n) ? n : null;
+        int? TryInt(string? s) => int.TryParse(s?.Trim(), out int n) ? n : null;
 
-        var dto = new NamecardDto
+        NamecardDto dto = new NamecardDto
         {
             Character   = character,
             Title       = fullTitle.Split(":")
@@ -57,13 +57,13 @@ public static partial class NamecardParser
     private static (string character, string title) SplitNamecardTitle(string title)
     {
         // remove namespace se houver (ns=0, mas por via das dúvidas)
-        var t = title.Trim();
-        var colonNs = t.IndexOf(':'); 
+        string t = title.Trim();
+        int colonNs = t.IndexOf(':'); 
         if (colonNs >= 0 && !NamespacePrefixRegex().IsMatch(t)) // namespace no começo? mantemos o resto
             t = t[(colonNs + 1)..].Trim();
 
         // captura antes do primeiro ':' como personagem
-        var m = NamecardTitleRegex().Match(t);
+        Match m = NamecardTitleRegex().Match(t);
         if (m.Success)
             return (m.Groups[1].Value.Trim(), t);
 
@@ -74,11 +74,11 @@ public static partial class NamecardParser
     // --- Collect source1..sourceN
     private static List<string>? ExtractSources(Dictionary<string, string?> fields)
     {
-        var list = new List<string?>();
-        foreach (var kv in fields)
+        List<string?> list = new List<string?>();
+        foreach (KeyValuePair<string, string?> kv in fields)
         {
             if (!kv.Key.StartsWith("source", StringComparison.OrdinalIgnoreCase)) continue;
-            var clean = TextHelper.CleanInline(kv.Value);
+            string? clean = TextHelper.CleanInline(kv.Value);
             if (!string.IsNullOrWhiteSpace(clean)) list.Add(clean);
         }
         return list.Count > 0 ? list : null;

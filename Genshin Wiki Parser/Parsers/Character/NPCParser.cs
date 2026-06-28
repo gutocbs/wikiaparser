@@ -19,10 +19,10 @@ public static partial class NpcParser
         if (!wikitext.Contains("{{Character Infobox", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var box = TextHelper.ExtractTemplateBlock(wikitext, "Character Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Character Infobox");
         if (box is null) return null;
 
-        var fields = TextHelper.ParseTemplateFields(box, "Character Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Character Infobox");
 
         string? type = TextHelper.CleanInline(TextHelper.Get(fields, "type"));
         // Se o tipo explicitamente diz NPC, seguimos; caso não tenha type, ainda dá pra aceitar (muitos NPCs têm).
@@ -32,7 +32,7 @@ public static partial class NpcParser
             return null;
         }
 
-        var dto = new NpcDto
+        NpcDto dto = new NpcDto
         {
             Name        = TextHelper.CleanInline(title),
             RealName    = TextHelper.CleanInline(TextHelper.Get(fields, "realname")),
@@ -68,10 +68,10 @@ public static partial class NpcParser
         List<DetailDto>? familyDto = new List<DetailDto>();
         if(familyFields.Count > 0)
         {
-            foreach (var family in familyFields)
+            foreach (KeyValuePair<string, string> family in familyFields)
             {
-                var familyKey = family.Key;
-                var familyValue = TextHelper.Get(fields, family.Key);
+                string familyKey = family.Key;
+                string? familyValue = TextHelper.Get(fields, family.Key);
                 if (!string.IsNullOrWhiteSpace(familyKey) && !string.IsNullOrWhiteSpace(familyValue))
                 {
                     familyDto.Add(new DetailDto
@@ -89,24 +89,24 @@ public static partial class NpcParser
     }
     public static List<DialogueSection> ExtractDialog(string wikiText)
     {
-        var result = new List<DialogueSection>();
+        List<DialogueSection> result = new List<DialogueSection>();
         if (string.IsNullOrWhiteSpace(wikiText)) return result;
 
         // Pega todos os blocos {{Dialogue Start}} ... {{Dialogue End}}
         foreach (Match blk in TextHelper.MatchDialogueBlocks(wikiText))
         {
-            var body = blk.Groups["body"].Value;
+            string body = blk.Groups["body"].Value;
 
-            var section = new DialogueSection(); // recomeça a cada contexto
-            using var reader = new StringReader(body);
+            DialogueSection section = new DialogueSection(); // recomeça a cada contexto
+            using StringReader reader = new StringReader(body);
             string? raw;
             while ((raw = reader.ReadLine()) != null)
             {
-                var line = raw.TrimEnd();
+                string line = raw.TrimEnd();
                 if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----")) continue;
 
                 // Contexto ;( ... )
-                if (TryExtractContext(line, out var context))
+                if (TryExtractContext(line, out string context))
                 {
                     // fecha seção anterior
                     if (!string.IsNullOrWhiteSpace(section.Context) || section.Lines.Count > 0)
@@ -119,17 +119,17 @@ public static partial class NpcParser
                 }
 
                 // Linhas iniciadas por ":" (uma ou mais) = diálogo/choice
-                if (!TryExtractDialogueRest(line, out var rest)) continue;
+                if (!TryExtractDialogueRest(line, out string rest)) continue;
 
                 // captura audios {{A|...}}
-                TextHelper.ExtractAudioFiles(rest, out var withoutAudio);
-                var noAudio = withoutAudio?.Trim() ?? "";
+                TextHelper.ExtractAudioFiles(rest, out string? withoutAudio);
+                string noAudio = withoutAudio?.Trim() ?? "";
 
                 // é choice? começa com {{DIcon}}
-                var isChoice = TextHelper.StartsWithDialogueIcon(noAudio);
+                bool isChoice = TextHelper.StartsWithDialogueIcon(noAudio);
                 if (isChoice)
                 {
-                    var txt = TextHelper.CleanText(noAudio);
+                    string txt = TextHelper.CleanText(noAudio);
                     if (!string.IsNullOrWhiteSpace(txt))
                         section.Lines.Add(new DialogueLine
                         {
@@ -140,11 +140,11 @@ public static partial class NpcParser
                 }
 
                 // fala do tipo '''Speaker:''' Texto
-                var mTalk = DialogueSpeakerRegex().Match(noAudio);
+                Match mTalk = DialogueSpeakerRegex().Match(noAudio);
                 if (mTalk.Success)
                 {
-                    var sp = TextHelper.CleanText(mTalk.Groups["sp"].Value);
-                    var tx = TextHelper.CleanText(mTalk.Groups["tx"].Value).Replace("\\\"", "");
+                    string sp = TextHelper.CleanText(mTalk.Groups["sp"].Value);
+                    string tx = TextHelper.CleanText(mTalk.Groups["tx"].Value).Replace("\\\"", "");
                     section.Lines.Add(new DialogueLine
                     {
                         Speaker = string.IsNullOrWhiteSpace(sp) ? null : sp,
@@ -154,7 +154,7 @@ public static partial class NpcParser
                 else
                 {
                     // narrativa/linha solta sem speaker
-                    var txt = TextHelper.CleanText(noAudio).Replace("\\\"", "");
+                    string txt = TextHelper.CleanText(noAudio).Replace("\\\"", "");
                     if (!string.IsNullOrWhiteSpace(txt))
                         section.Lines.Add(new DialogueLine
                         {
@@ -174,10 +174,10 @@ public static partial class NpcParser
     private static bool TryExtractContext(string line, out string context)
     {
         context = string.Empty;
-        var trimmed = line.Trim();
+        string trimmed = line.Trim();
         if (!trimmed.StartsWith(";", StringComparison.Ordinal)) return false;
 
-        var body = trimmed[1..].TrimStart();
+        string body = trimmed[1..].TrimStart();
         if (body.Length <= 2 || body[0] != '(' || body[^1] != ')') return false;
 
         context = body[1..^1];
@@ -187,10 +187,10 @@ public static partial class NpcParser
     private static bool TryExtractDialogueRest(string line, out string rest)
     {
         rest = string.Empty;
-        var span = line.AsSpan().TrimStart();
+        ReadOnlySpan<char> span = line.AsSpan().TrimStart();
         if (span.IsEmpty || span[0] != ':') return false;
 
-        var i = 1;
+        int i = 1;
         while (i < span.Length && span[i] == ':') i++;
 
         rest = span[i..].Trim().ToString();

@@ -15,13 +15,13 @@ public static partial class LoreParser
         if (string.IsNullOrWhiteSpace(pageTitle)) return null;
         if (!pageTitle.EndsWith("/Lore", StringComparison.OrdinalIgnoreCase)) return null;
 
-        var dto = new LoreDto
+        LoreDto dto = new LoreDto
         {
             Character = pageTitle[..pageTitle.IndexOf("/Lore", StringComparison.OrdinalIgnoreCase)]
         };
 
         // 1) Quotes (todas) + primeira como SummaryQuote
-        var quotes = ExtractQuotes(wikitext);
+        List<QuoteDto> quotes = ExtractQuotes(wikitext);
         dto.Quotes = quotes.Count > 0 ? quotes : null;
         dto.SummaryQuote = dto.Quotes?.FirstOrDefault()?.Text;
 
@@ -43,17 +43,17 @@ public static partial class LoreParser
     // ---------- QUOTES ----------
     private static List<QuoteDto> ExtractQuotes(string text)
     {
-        var list = new List<QuoteDto>();
+        List<QuoteDto> list = new List<QuoteDto>();
 
         // Puxa blocos {{Quote|...}} com captura "preguiçosa" – nos dumps isso costuma ser simples
         foreach (Match m in TextHelper.MatchQuoteTemplates(text))
         {
-            var content = m.Groups[1].Value; // pode ser "texto|fonte" ou só "texto"
+            string content = m.Groups[1].Value; // pode ser "texto|fonte" ou só "texto"
 
             // split pela primeira barra vertical fora de tags <ref> simples
-            var parts = SplitFirstPipe(content);
+            (string, string?) parts = SplitFirstPipe(content);
 
-            var q = new QuoteDto
+            QuoteDto q = new QuoteDto
             {
                 Text   = TextHelper.CleanText(parts.Item1),
                 Source = TextHelper.CleanText(parts.Item2)
@@ -68,7 +68,7 @@ public static partial class LoreParser
     // divide A|B em (A,B), se houver '|', senão (A,null)
     private static (string, string?) SplitFirstPipe(string s)
     {
-        var idx = s.IndexOf('|');
+        int idx = s.IndexOf('|');
         if (idx < 0) return (s, null);
         return (s[..idx], s[(idx + 1)..]);
     }
@@ -76,11 +76,11 @@ public static partial class LoreParser
     // ---------- OFFICIAL INTRO ----------
     private static OfficialIntroDto? ExtractOfficialIntroduction(string text)
     {
-        var block = TextHelper.ExtractTemplateBlock(text, "Official Introduction");
+        string? block = TextHelper.ExtractTemplateBlock(text, "Official Introduction");
         if (block == null) return null;
 
-        var fields = TextHelper.ParseTemplateFields(block, "Official Introduction");
-        var dto = new OfficialIntroDto
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(block, "Official Introduction");
+        OfficialIntroDto dto = new OfficialIntroDto
         {
             Title     = TextHelper.Get(fields, "title"),
             Link      = TextHelper.Get(fields, "link"),
@@ -93,29 +93,29 @@ public static partial class LoreParser
     // ---------- CHARACTER STORIES ----------
     private static List<CharacterStoryDto>? ExtractCharacterStories(string text)
     {
-        var block = TextHelper.ExtractTemplateBlock(text, "Character Story");
+        string? block = TextHelper.ExtractTemplateBlock(text, "Character Story");
         if (block == null) return null;
 
-        var fields = TextHelper.ParseTemplateFields(block, "Character Story");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(block, "Character Story");
 
         // Descobrir quantos índices existem (titleN, textN, ...)
-        var maxN = 0;
-        foreach (var k in fields.Keys)
+        int maxN = 0;
+        foreach (string k in fields.Keys)
         {
-            var m = CharacterStoryFieldRegex().Match(k);
-            if (m.Success && int.TryParse(m.Groups[1].Value, out var n) && n > maxN) maxN = n;
+            Match m = CharacterStoryFieldRegex().Match(k);
+            if (m.Success && int.TryParse(m.Groups[1].Value, out int n) && n > maxN) maxN = n;
         }
 
-        var list = new List<CharacterStoryDto>();
+        List<CharacterStoryDto> list = new List<CharacterStoryDto>();
         for (int n = 1; n <= maxN; n++)
         {
-            var title = TextHelper.Get(fields, $"title{n}");
-            var textN = TextHelper.CleanText(TextHelper.Get(fields, $"text{n}"));
-            var frStr = TextHelper.Get(fields, $"friendship{n}");
+            string? title = TextHelper.Get(fields, $"title{n}");
+            string textN = TextHelper.CleanText(TextHelper.Get(fields, $"text{n}"));
+            string? frStr = TextHelper.Get(fields, $"friendship{n}");
             int? friendship = null;
-            if (int.TryParse(frStr, out var f)) friendship = f;
+            if (int.TryParse(frStr, out int f)) friendship = f;
 
-            var mentionsStr = TextHelper.Get(fields, $"mention{n}");
+            string? mentionsStr = TextHelper.Get(fields, $"mention{n}");
             List<string>? mentions = null;
             if (!string.IsNullOrWhiteSpace(mentionsStr))
             {

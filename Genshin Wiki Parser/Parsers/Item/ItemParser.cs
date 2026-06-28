@@ -10,11 +10,11 @@ public static class ItemParser
         if (string.IsNullOrWhiteSpace(wikiText)) return null;
         if (!wikiText.Contains("{{Item Infobox", StringComparison.OrdinalIgnoreCase)) return null;
 
-        var dto = new ItemDto { Title = pageTitle };
+        ItemDto dto = new ItemDto { Title = pageTitle };
 
         // 1) Infobox
-        var infobox = TextHelper.ExtractTemplate("Item Infobox", wikiText);
-        var map  = TextHelper.ParseTemplateParams(infobox);
+        string infobox = TextHelper.ExtractTemplate("Item Infobox", wikiText);
+        Dictionary<string, string> map  = TextHelper.ParseTemplateParams(infobox);
 
         dto.Id          = TextHelper.TryInt(TextHelper.Get(map, "id"));
         dto.Type        = TextHelper.Get(map, "type");
@@ -25,16 +25,16 @@ public static class ItemParser
             dto.Description = dto.Description.Replace("Character Ascension material.\\n", "");
 
         // sources: pega TODAS as chaves que começam com "source"
-        foreach (var kv in map.Where(kv => kv.Key.StartsWith("source", StringComparison.OrdinalIgnoreCase))
+        foreach (KeyValuePair<string, string> kv in map.Where(kv => kv.Key.StartsWith("source", StringComparison.OrdinalIgnoreCase))
                               .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var val = TextHelper.CleanText(kv.Value);
+            string val = TextHelper.CleanText(kv.Value);
             if (!string.IsNullOrWhiteSpace(val))
                 dto.Sources.Add(val);
         }
 
         // sanity: precisa ter pelo menos um núcleo (type/description)
-        var hasCore = !string.IsNullOrWhiteSpace(dto.Type) || !string.IsNullOrWhiteSpace(dto.Description);
+        bool hasCore = !string.IsNullOrWhiteSpace(dto.Type) || !string.IsNullOrWhiteSpace(dto.Description);
         return hasCore ? dto : null;
     }
 }

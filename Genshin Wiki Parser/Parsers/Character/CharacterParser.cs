@@ -71,10 +71,10 @@ public static class CharacterParser
         
         if(dictionary.Count > 0)
         {
-            foreach (var keyValuePair in dictionary)
+            foreach (KeyValuePair<string, string> keyValuePair in dictionary)
             {
-                var key = keyValuePair.Key;
-                var value = TextHelper.Get(fields, keyValuePair.Key);
+                string key = keyValuePair.Key;
+                string? value = TextHelper.Get(fields, keyValuePair.Key);
                 if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(value))
                 {
                     if(ignoreUrl && TextHelper.IsUrl(value))
@@ -102,10 +102,10 @@ public static class CharacterParser
         
         if(dictionary.Count > 0)
         {
-            foreach (var keyValuePair in dictionary)
+            foreach (KeyValuePair<string, string> keyValuePair in dictionary)
             {
-                var key = keyValuePair.Key;
-                var value = TextHelper.Get(fields, keyValuePair.Key);
+                string key = keyValuePair.Key;
+                string? value = TextHelper.Get(fields, keyValuePair.Key);
                 if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(value))
                 {
                     if(ignoreUrl && TextHelper.IsUrl(value))
@@ -128,10 +128,10 @@ public static class CharacterParser
         List<DetailDto>? familyDto = new List<DetailDto>();
         if(familyFields.Count > 0)
         {
-            foreach (var family in familyFields)
+            foreach (KeyValuePair<string, string> family in familyFields)
             {
-                var familyKey = family.Key;
-                var familyValue = TextHelper.Get(fields, family.Key);
+                string familyKey = family.Key;
+                string? familyValue = TextHelper.Get(fields, family.Key);
                 if (!string.IsNullOrWhiteSpace(familyKey) && !string.IsNullOrWhiteSpace(familyValue))
                 {
                     familyDto.Add(new DetailDto

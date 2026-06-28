@@ -18,12 +18,12 @@ public static class IgnoreListHelper
         if (!File.Exists(path))
             throw new FileNotFoundException($"Arquivo de ignore não encontrado: {path}");
 
-        var json = File.ReadAllText(path);
-        var config = JsonConvert.DeserializeObject<IgnoreConfig>(json)
-                     ?? new IgnoreConfig();
+        string json = File.ReadAllText(path);
+        IgnoreConfig config = JsonConvert.DeserializeObject<IgnoreConfig>(json)
+                              ?? new IgnoreConfig();
 
-        var titleSet = new HashSet<string>(config.Titles, StringComparer.OrdinalIgnoreCase);
-        var keywordList = config.Keywords;
+        HashSet<string> titleSet = new HashSet<string>(config.Titles, StringComparer.OrdinalIgnoreCase);
+        List<string> keywordList = config.Keywords;
 
         return (titleSet, keywordList);
     }

@@ -22,12 +22,12 @@ public static partial class VoiceOverParser
         if (string.IsNullOrWhiteSpace(pageTitle)) return null;
         if (!pageTitle.EndsWith("/Voice-Overs", StringComparison.OrdinalIgnoreCase)) return null;
 
-        var character = BaseTitle(pageTitle);
+        string character = BaseTitle(pageTitle);
 
-        var dto = new VoiceOversDto { Character = character };
+        VoiceOversDto dto = new VoiceOversDto { Character = character };
 
         // --- VO/Story ---
-        var storyBlock = TextHelper.ExtractTemplateBlock(wikitext, "VO/Story");
+        string? storyBlock = TextHelper.ExtractTemplateBlock(wikitext, "VO/Story");
         if (storyBlock is not null)
         {
             dto.Story = ParseVoStory(storyBlock, character, languageCode);
@@ -35,7 +35,7 @@ public static partial class VoiceOverParser
         }
 
         // --- Combat VO ---
-        var combatBlock =TextHelper. ExtractTemplateBlock(wikitext, "Combat VO");
+        string? combatBlock =TextHelper. ExtractTemplateBlock(wikitext, "Combat VO");
         if (combatBlock is not null)
         {
             dto.Combat = ParseCombatVo(combatBlock, character, languageCode);
@@ -49,23 +49,23 @@ public static partial class VoiceOverParser
 
     private static List<VoStoryLineDto>? ParseVoStory(string templateContent, string character, string? languageCode)
     {
-        var fields = TextHelper.ParseTemplateFields(templateContent, "VO/Story");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(templateContent, "VO/Story");
 
         // regex: vo_XX_YY_suffix
-        var byBase = new Dictionary<string, VoStoryLineDto>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, VoStoryLineDto> byBase = new Dictionary<string, VoStoryLineDto>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var kv in fields)
+        foreach (KeyValuePair<string, string> kv in fields)
         {
-            var key = kv.Key; var val = kv.Value;
-            var m = StoryVoiceOverFieldRegex().Match(key);
+            string key = kv.Key; string val = kv.Value;
+            Match m = StoryVoiceOverFieldRegex().Match(key);
             if (!m.Success) continue;
 
-            var g = m.Groups[1].Value;   // grupo XX
-            var i = m.Groups[2].Value;   // índice YY
-            var suf = m.Groups[3].Value.ToLowerInvariant();
-            var baseKey = $"vo_{g}_{i}";
+            string g = m.Groups[1].Value;   // grupo XX
+            string i = m.Groups[2].Value;   // índice YY
+            string suf = m.Groups[3].Value.ToLowerInvariant();
+            string baseKey = $"vo_{g}_{i}";
 
-            if (!byBase.TryGetValue(baseKey, out var line))
+            if (!byBase.TryGetValue(baseKey, out VoStoryLineDto? line))
             {
                 line = new VoStoryLineDto { Key = baseKey };
                 byBase[baseKey] = line;
@@ -80,10 +80,10 @@ public static partial class VoiceOverParser
                     line.Text = TextHelper.CleanText(val).Replace("{character}", "Player").Replace("{name}", "Player");
                     break;
                 case "friendship":
-                    if (int.TryParse(val.Trim(), out var f)) line.Friendship = f;
+                    if (int.TryParse(val.Trim(), out int f)) line.Friendship = f;
                     break;
                 case "ascension":
-                    if (int.TryParse(val.Trim(), out var a)) line.Ascension = a;
+                    if (int.TryParse(val.Trim(), out int a)) line.Ascension = a;
                     break;
                 case "mention":
                     line.Mentions = SplitList(val);
@@ -95,7 +95,7 @@ public static partial class VoiceOverParser
         }
 
         // Ordena por (grupo, índice)
-        var ordered = byBase
+        List<VoStoryLineDto> ordered = byBase
             .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
             .Select(kv => kv.Value)
             .ToList();
@@ -107,28 +107,28 @@ public static partial class VoiceOverParser
 
     private static Dictionary<string, List<VoCueDto>>? ParseCombatVo(string templateContent, string character, string? languageCode)
     {
-        var fields = TextHelper.ParseTemplateFields(templateContent, "Combat VO");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(templateContent, "Combat VO");
 
         // ex.: "skill_1_tx", "burst_3_tx", "sprint-s_1_file", "hit-h_3_file"
-        var map = new Dictionary<string, Dictionary<int, VoCueDto>>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, Dictionary<int, VoCueDto>> map = new Dictionary<string, Dictionary<int, VoCueDto>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var kv in fields)
+        foreach (KeyValuePair<string, string> kv in fields)
         {
-            var key = kv.Key; var val = kv.Value;
-            var m = CombatVoiceOverFieldRegex().Match(key);
+            string key = kv.Key; string val = kv.Value;
+            Match m = CombatVoiceOverFieldRegex().Match(key);
             if (!m.Success) continue;
 
-            var cat = m.Groups[1].Value;                 // categoria
-            var idxStr = m.Groups[2].Value;              // "1", "2"...
-            var suf = m.Groups[3].Value.ToLowerInvariant(); // "tx" ou "file"
-            if (!int.TryParse(idxStr, out var idx)) continue;
+            string cat = m.Groups[1].Value;                 // categoria
+            string idxStr = m.Groups[2].Value;              // "1", "2"...
+            string suf = m.Groups[3].Value.ToLowerInvariant(); // "tx" ou "file"
+            if (!int.TryParse(idxStr, out int idx)) continue;
 
-            if (!map.TryGetValue(cat, out var byIndex))
+            if (!map.TryGetValue(cat, out Dictionary<int, VoCueDto>? byIndex))
             {
                 byIndex = new Dictionary<int, VoCueDto>();
                 map[cat] = byIndex;
             }
-            if (!byIndex.TryGetValue(idx, out var cue))
+            if (!byIndex.TryGetValue(idx, out VoCueDto? cue))
             {
                 cue = new VoCueDto { Index = idx };
                 byIndex[idx] = cue;
@@ -143,8 +143,8 @@ public static partial class VoiceOverParser
         if (map.Count == 0) return null;
 
         // materializa em Dictionary<string, List<VoCueDto>> ordenando por Index
-        var result = new Dictionary<string, List<VoCueDto>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var cat in map.Keys)
+        Dictionary<string, List<VoCueDto>> result = new Dictionary<string, List<VoCueDto>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string cat in map.Keys)
         {
             result[cat] = map[cat].Values.OrderBy(c => c.Index).ToList();
         }
@@ -156,14 +156,14 @@ public static partial class VoiceOverParser
     private static List<string>? SplitFiles(string? raw, string character, string? languageCode)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        var items = raw
+        List<string> items = raw
             .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim())
             .Where(s => s.Length > 0)
             .Select(s =>
             {
                 // substitui {character}/{language} se desejar
-                var r = s.Replace("{character}", character);
+                string r = s.Replace("{character}", character);
                 if (!string.IsNullOrEmpty(languageCode))
                     r = r.Replace("{language}", languageCode);
                 return r;
@@ -175,7 +175,7 @@ public static partial class VoiceOverParser
     private static List<string>? SplitList(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        var items = raw
+        List<string?> items = raw
             .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => TextHelper.CleanInline(s))
             .Where(s => s.Length > 0)
@@ -185,9 +185,9 @@ public static partial class VoiceOverParser
 
     private static string BaseTitle(string full)
     {
-        var t = full;
-        var colon = t.IndexOf(':'); if (colon >= 0) t = t[(colon + 1)..];
-        var slash = t.IndexOf('/'); if (slash >= 0) t = t[..slash];
+        string t = full;
+        int colon = t.IndexOf(':'); if (colon >= 0) t = t[(colon + 1)..];
+        int slash = t.IndexOf('/'); if (slash >= 0) t = t[..slash];
         return t.Trim();
     }
 }

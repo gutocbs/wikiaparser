@@ -53,14 +53,14 @@ public static partial class FactionParser
         if (!wikitext.Contains("{{Faction Infobox", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var box = TextHelper.ExtractTemplateBlock(wikitext, "Faction Infobox");
+        string? box = TextHelper.ExtractTemplateBlock(wikitext, "Faction Infobox");
         if (box is null) return null;
 
-        var fields = TextHelper.ParseTemplateFields(box, "Faction Infobox");
+        Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, "Faction Infobox");
 
         if(wikitext.Contains("of the nation of Khaenri'ah by the gods... is the reason why the Abyss Order now seeks to destroy the nations watched over by The Seven."))
             Console.WriteLine("sdadd");
-        var dto = new FactionDto
+        FactionDto dto = new FactionDto
         {
             Title  = TextHelper.CleanInline(pageTitle ?? ""),
             Base   = TextHelper.CleanInline(TextHelper.Get(fields, "base")),
@@ -83,15 +83,15 @@ public static partial class FactionParser
     {
         if (string.IsNullOrWhiteSpace(field)) return null;
         // tenta dentro de <gallery>
-        var content = TextHelper.ExtractGalleryContent(field);
+        string? content = TextHelper.ExtractGalleryContent(field);
         if (content is not null)
         {
-            foreach (var line in content.Split('\n'))
+            foreach (string line in content.Split('\n'))
             {
-                var raw = line.Trim();
+                string raw = line.Trim();
                 if (string.IsNullOrWhiteSpace(raw)) continue;
-                var parts = raw.Split('|', 2);
-                var file = TextHelper.CleanInline(parts[0]);
+                string[] parts = raw.Split('|', 2);
+                string? file = TextHelper.CleanInline(parts[0]);
                 if (!string.IsNullOrWhiteSpace(file)) return file;
             }
         }
@@ -102,12 +102,12 @@ public static partial class FactionParser
     // ---------- Quotes: {{Quote|texto|falante|contexto(opc)}} múltiplos ----------
     private static List<FactionQuoteDto>? ExtractQuotes(string text)
     {
-        var list = new List<FactionQuoteDto>();
+        List<FactionQuoteDto> list = new List<FactionQuoteDto>();
         foreach (Match m in TextHelper.MatchQuoteTemplates(text))
         {
-            var blob = m.Groups[1].Value;
-            var parts = SplitTemplateParams(TextHelper.ReplaceText(blob) ?? blob);
-            var q = new FactionQuoteDto();
+            string blob = m.Groups[1].Value;
+            List<string> parts = SplitTemplateParams(TextHelper.ReplaceText(blob) ?? blob);
+            FactionQuoteDto q = new FactionQuoteDto();
             q.Text = parts.Count > 0 ? TextHelper.CleanInline(parts[0])?.Replace("quote = ","") : null;
             if (parts.Count > 1)
             {
@@ -124,7 +124,7 @@ public static partial class FactionParser
     private static List<string> SplitTemplateParams(string s)
     {
         // divide por | respeitando não aninhar chaves profundamente (versão simples)
-        var parts = new List<string>();
+        List<string> parts = new List<string>();
         int depth = 0; int start = 0;
         for (int i = 0; i < s.Length; i++)
         {
@@ -143,9 +143,9 @@ public static partial class FactionParser
     // ---------- Sections ----------
     private static string? ExtractSection(string text, string sectionName)
     {
-        var m = GetSectionRegex(sectionName).Match(text);
+        Match m = GetSectionRegex(sectionName).Match(text);
         if (!m.Success) return null;
-        var body = TextHelper.CleanText(m.Groups[1].Value);
+        string body = TextHelper.CleanText(m.Groups[1].Value);
         return string.IsNullOrWhiteSpace(body) ? null : body;
     }
 
@@ -153,26 +153,26 @@ public static partial class FactionParser
     private static List<FactionMemberDto>? ParseMembersTable(string text)
     {
         // pega a seção "===Members===" e o primeiro {|
-        var secM = MembersSectionRegex().Match(text);
+        Match secM = MembersSectionRegex().Match(text);
         if (!secM.Success) return null;
 
-        var sec = secM.Groups[1].Value;
-        var tbl = WikiTableRegex().Match(sec);
+        string sec = secM.Groups[1].Value;
+        Match tbl = WikiTableRegex().Match(sec);
         if (!tbl.Success) return null;
 
-        var rows = TableRowSeparatorRegex().Split(tbl.Groups[1].Value.Trim()).ToList();
+        List<string> rows = TableRowSeparatorRegex().Split(tbl.Groups[1].Value.Trim()).ToList();
 
-        var members = new List<FactionMemberDto>();
-        foreach (var row in rows)
+        List<FactionMemberDto> members = new List<FactionMemberDto>();
+        foreach (string row in rows)
         {
             // pula cabeçalho (linhas começando com "!")
             if (TableHeaderRowRegex().IsMatch(row)) continue;
 
             // coleta células que começam com "|"
-            var cells = new List<string>();
-            foreach (var line in row.Split('\n'))
+            List<string> cells = new List<string>();
+            foreach (string line in row.Split('\n'))
             {
-                var ln = line.TrimStart();
+                string ln = line.TrimStart();
                 if (ln.StartsWith("|"))
                 {
                     cells.Add(ln.Substring(1).Trim());
@@ -180,10 +180,10 @@ public static partial class FactionParser
             }
             if (cells.Count < 5) continue; // esperamos 5 colunas (Icon, Name, Title, Star, Responsibility)
 
-            var (name, link) = ExtractLink(cells[1]);
-            var title   = TextHelper.CleanCell(cells[2]);
-            var star    = TextHelper.CleanCell(cells[3]); // mantém "Dubhe (Alpha Ursae Majoris)" já limpo
-            var resp    = TextHelper.CleanCell(cells[4]);
+            (string? name, string? link) = ExtractLink(cells[1]);
+            string title   = TextHelper.CleanCell(cells[2]);
+            string star    = TextHelper.CleanCell(cells[3]); // mantém "Dubhe (Alpha Ursae Majoris)" já limpo
+            string resp    = TextHelper.CleanCell(cells[4]);
 
             members.Add(new FactionMemberDto
             {
@@ -201,11 +201,11 @@ public static partial class FactionParser
     private static (string? display, string? link) ExtractLink(string cell)
     {
         // [[Target|Display]] ou [[Display]]
-        var m = WikiLinkRegex().Match(cell);
+        Match m = WikiLinkRegex().Match(cell);
         if (m.Success)
         {
-            var target = m.Groups[1].Value.Trim();
-            var disp   = m.Groups[2].Success ? m.Groups[2].Value.Trim() : target;
+            string target = m.Groups[1].Value.Trim();
+            string disp   = m.Groups[2].Success ? m.Groups[2].Value.Trim() : target;
             return (TextHelper.CleanInline(disp), TextHelper.CleanInline(target));
         }
         return (TextHelper.CleanCell(cell), null);
@@ -214,24 +214,24 @@ public static partial class FactionParser
     // ---------- Former Members (lista com '*') ----------
     private static List<FactionFormerMemberDto>? ParseFormerMembers(string text)
     {
-        var sec = FormerMembersSectionRegex().Match(text);
+        Match sec = FormerMembersSectionRegex().Match(text);
         if (!sec.Success) return null;
 
-        var body = sec.Groups[1].Value;
-        var list = new List<FactionFormerMemberDto>();
+        string body = sec.Groups[1].Value;
+        List<FactionFormerMemberDto> list = new List<FactionFormerMemberDto>();
 
-        foreach (var line in body.Split('\n'))
+        foreach (string line in body.Split('\n'))
         {
-            var ln = line.Trim();
+            string ln = line.Trim();
             if (!ln.StartsWith("*")) continue;
 
             // exemplo: * [[Yun Hui]]<ref>...</ref><ref group="Note">...</ref> (title unknown)
-            var clean = TextHelper.CleanCell(ln.TrimStart('*').Trim());
+            string clean = TextHelper.CleanCell(ln.TrimStart('*').Trim());
             // tenta separar " — " / " - " / parênteses
             string? name = clean;
             string? note = null;
 
-            var mParen = ParenthesizedNoteRegex().Match(clean);
+            Match mParen = ParenthesizedNoteRegex().Match(clean);
             if (mParen.Success)
             {
                 name = mParen.Groups[1].Value.Trim();
@@ -251,28 +251,28 @@ public static partial class FactionParser
     // ---------- Employees agrupados por subheading (ex.: Wangshu Inn) ----------
     private static Dictionary<string, List<FactionEmployeeDto>>? ParseEmployees(string text)
     {
-        var sec = EmployeesSectionRegex().Match(text);
+        Match sec = EmployeesSectionRegex().Match(text);
         if (!sec.Success) return null;
 
-        var body = sec.Groups[1].Value;
-        var dict = new Dictionary<string, List<FactionEmployeeDto>>(StringComparer.OrdinalIgnoreCase);
+        string body = sec.Groups[1].Value;
+        Dictionary<string, List<FactionEmployeeDto>> dict = new Dictionary<string, List<FactionEmployeeDto>>(StringComparer.OrdinalIgnoreCase);
 
         // sub-seções "====Name====" (ex.: Wangshu Inn) + o bloco até o próximo ==== ou fim
-        var matches = EmployeeSubsectionRegex().Matches(body);
+        MatchCollection matches = EmployeeSubsectionRegex().Matches(body);
 
         if (matches.Count == 0)
         {
             // Sem subheading: parse bullets diretos no body (às vezes vem dentro de {{column|2| ... }})
-            var list = ParseEmployeeBullets(body);
+            List<FactionEmployeeDto> list = ParseEmployeeBullets(body);
             if (list.Count > 0) dict["Employees"] = list;
         }
         else
         {
             foreach (Match m in matches)
             {
-                var groupName = TextHelper.CleanInline(m.Groups[1].Value);
-                var groupBody = m.Groups[2].Value;
-                var list = ParseEmployeeBullets(groupBody);
+                string? groupName = TextHelper.CleanInline(m.Groups[1].Value);
+                string groupBody = m.Groups[2].Value;
+                List<FactionEmployeeDto> list = ParseEmployeeBullets(groupBody);
                 if (list.Count > 0)
                     dict[groupName] = list;
             }
@@ -284,21 +284,21 @@ public static partial class FactionParser
     private static List<FactionEmployeeDto> ParseEmployeeBullets(string body)
     {
         // Se vier em {{column|2| ... }}, extraímos o conteúdo
-        var col = ColumnTemplateRegex().Match(body);
+        Match col = ColumnTemplateRegex().Match(body);
         if (col.Success) body = col.Groups[1].Value;
 
-        var list = new List<FactionEmployeeDto>();
-        foreach (var raw in body.Split('\n'))
+        List<FactionEmployeeDto> list = new List<FactionEmployeeDto>();
+        foreach (string raw in body.Split('\n'))
         {
-            var line = raw.Trim();
+            string line = raw.Trim();
             if (!line.StartsWith("*")) continue;
 
-            var clean = TextHelper.CleanCell(line.TrimStart('*').Trim());
+            string clean = TextHelper.CleanCell(line.TrimStart('*').Trim());
             // normalmente "Nome — Papel" (— ou -)
             string? name = clean;
             string? role = null;
 
-            var mDash = DashSeparatedRoleRegex().Match(clean);
+            Match mDash = DashSeparatedRoleRegex().Match(clean);
             if (mDash.Success)
             {
                 name = mDash.Groups[1].Value.Trim();

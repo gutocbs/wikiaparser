@@ -22,7 +22,7 @@ public sealed class OutputSink : IObjectSink
 
     private static void EnsureParentDirectory(string filePath)
     {
-        var parent = Path.GetDirectoryName(Path.GetFullPath(filePath))!;
+        string parent = Path.GetDirectoryName(Path.GetFullPath(filePath))!;
         // se por acaso existe um arquivo no lugar do diretório-pai, explodimos com mensagem clara
         if (File.Exists(parent))
             throw new IOException($"O caminho de saída '{parent}' existe como arquivo. Passe um diretório válido para outputDir.");

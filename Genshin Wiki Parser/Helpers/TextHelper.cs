@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using Genshin.Wiki.Parser.RegexPatterns;
@@ -14,12 +15,12 @@ public static partial class TextHelper
     // Extrai bloco de template com chaves balanceadas, ex.: {{Character Infobox ... }}
     public static string? ExtractTemplateBlock(string text, string templateName)
     {
-        var idx = IndexOfTemplateStart(text, templateName);
+        int idx = IndexOfTemplateStart(text, templateName);
         if (idx < 0) return null;
 
         int i = idx;
         int depth = 0;
-        var sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
 
         while (i < text.Length)
         {
@@ -42,7 +43,7 @@ public static partial class TextHelper
             i++;
         }
 
-        var block = sb.ToString();
+        string block = sb.ToString();
         // Tira a casca "{{" + "}}" externa
         if (block.StartsWith("{{", StringComparison.Ordinal) &&
             block.EndsWith("}}", StringComparison.Ordinal) &&
@@ -56,7 +57,7 @@ public static partial class TextHelper
     public static int IndexOfTemplateStart(string text, string templateName)
     {
         // procura "{{Character Infobox" ignorando case e espaços após {{
-        var m = DynamicPatterns.GetTemplateStartRegex(templateName).Match(text);
+        Match m = DynamicPatterns.GetTemplateStartRegex(templateName).Match(text);
         return m.Success ? m.Index : -1;
     }
 
@@ -64,13 +65,13 @@ public static partial class TextHelper
     public static Dictionary<string, string> ParseTemplateFields(string templateContent)
     {
         // Remove o cabeçalho "Character Infobox"
-        var content = CharacterPatterns.CharacterInfoboxHeader().Replace(templateContent, "");
+        string content = CharacterPatterns.CharacterInfoboxHeader().Replace(templateContent, "");
 
-        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string? currentKey = null;
-        var currentValue = new StringBuilder();
+        StringBuilder currentValue = new StringBuilder();
 
-        using var reader = new StringReader(content);
+        using StringReader reader = new StringReader(content);
         string? line;
         while ((line = reader.ReadLine()) != null)
         {
@@ -91,7 +92,7 @@ public static partial class TextHelper
                 }
 
                 // novo campo
-                var idx = line.IndexOf('=');
+                int idx = line.IndexOf('=');
                 if (idx > 1)
                 {
                     currentKey = NormalizeKey(line[1..idx].Trim());
@@ -129,13 +130,13 @@ public static partial class TextHelper
     {
         // Já estamos numa linha que começa com |image
         // Se houver <gallery>, consome até </gallery>
-        var sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         sb.AppendLine(line);
 
         bool inGallery = line.Contains("<gallery>", StringComparison.OrdinalIgnoreCase);
         while (true)
         {
-            var l = reader.ReadLine();
+            string? l = reader.ReadLine();
             if (l == null) break;
             sb.AppendLine(l);
             if (inGallery && l.IndexOf("</gallery>", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -149,7 +150,7 @@ public static partial class TextHelper
     // Normaliza a chave: remove comentários de fim, espaços e trailing colon
     public static string NormalizeKey(string raw)
     {
-        var k = raw.Trim();
+        string k = raw.Trim();
 
         // remove comentários no final da chave (raro, mas aparece)
         k = HtmlPatterns.HtmlComment().Replace(k, "").Trim();
@@ -164,7 +165,7 @@ public static partial class TextHelper
     {
         if (string.IsNullOrWhiteSpace(v)) return string.Empty;
 
-        var s = v;
+        string s = v;
 
         // remove comentários HTML
         s = HtmlPatterns.HtmlComment().Replace(s, "");
@@ -205,7 +206,7 @@ public static partial class TextHelper
         if (string.IsNullOrWhiteSpace(raw)) return raw ?? string.Empty;
 
         // 1) tenta capturar bullets do tipo "* algo", mesmo que tudo esteja em uma linha
-        var items = Regex
+        List<string> items = Regex
             .Matches(raw, @"\*\s*([^\*\r\n]+)")   // captura tudo após cada * até outro * ou quebra
             .Cast<Match>()
             .Select(m => m.Groups[1].Value.Trim())
@@ -216,7 +217,7 @@ public static partial class TextHelper
             return string.Join(", ", items);
 
         // 2) fallback: se não achou bullets, tenta dividir por quebras/; / | e limpar asteriscos residuais
-        var parts = raw
+        IEnumerable<string> parts = raw
             .Split(new[] { '\r', '\n', ';', '|' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim().TrimStart('*').Trim())
             .Where(s => s.Length > 0);
@@ -228,7 +229,7 @@ public static partial class TextHelper
 
     public static string? ExtractDescription(string fullText, string infoboxBlock)
     {
-        var startIdx = IndexOfTemplateStart(fullText, "Character Infobox");
+        int startIdx = IndexOfTemplateStart(fullText, "Character Infobox");
         if (startIdx < 0) return null;
 
         string block = "{{" + infoboxBlock + "}}";
@@ -236,21 +237,21 @@ public static partial class TextHelper
 
         if (after >= fullText.Length) return null;
 
-        var remainder = fullText[after..];
+        string remainder = fullText[after..];
 
         // pega até o próximo "==", que marca uma seção
-        var endSection = remainder.IndexOf("\n==", StringComparison.Ordinal);
-        var search = endSection >= 0 ? remainder[..endSection] : remainder;
+        int endSection = remainder.IndexOf("\n==", StringComparison.Ordinal);
+        string search = endSection >= 0 ? remainder[..endSection] : remainder;
 
         // quebra em linhas, remove vazias
-        var lines = search.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
+        List<string?> lines = search.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(CleanValue)
             .Where(l => !string.IsNullOrWhiteSpace(l))
             .ToList();
 
-        foreach (var l in lines)
+        foreach (string? l in lines)
         {
-            var candidate = l.Trim();
+            string candidate = l.Trim();
 
             // ignora se só tem nome em negrito
             if (TextCleanupPatterns.QuotedOnly().IsMatch(candidate))
@@ -277,7 +278,7 @@ public static partial class TextHelper
         if (string.IsNullOrWhiteSpace(raw)) return null;
 
         // tenta [http://url ...]
-        var m = LinkPatterns.Url().Match(raw);
+        Match m = LinkPatterns.Url().Match(raw);
         if (m.Success) return m.Value;
 
         // senão, retorna texto limpo
@@ -285,14 +286,14 @@ public static partial class TextHelper
     }
 
     public static string? Get(Dictionary<string, string> dict, string key)
-        => dict.TryGetValue(key, out var v) ? string.IsNullOrWhiteSpace(v) ? null : v : null;
+        => dict.TryGetValue(key, out string? v) ? string.IsNullOrWhiteSpace(v) ? null : v : null;
 
     public static bool IsEmpty(object? o)
     {
         if (o == null) return true;
-        foreach (var p in o.GetType().GetProperties())
+        foreach (PropertyInfo p in o.GetType().GetProperties())
         {
-            var v = p.GetValue(o);
+            object? v = p.GetValue(o);
             if (v is string s && !string.IsNullOrWhiteSpace(s)) return false;
             if (v is not string && v != null) return false;
         }
@@ -302,13 +303,13 @@ public static partial class TextHelper
     public static Dictionary<string, string> ParseTemplateFields(string templateContent, string headerName)
     {
         // remove cabeçalho "TemplateName"
-        var content = DynamicPatterns.GetTemplateHeaderRegex(headerName).Replace(templateContent, "");
+        string content = DynamicPatterns.GetTemplateHeaderRegex(headerName).Replace(templateContent, "");
 
-        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string? currentKey = null;
-        var currentValue = new StringBuilder();
+        StringBuilder currentValue = new StringBuilder();
 
-        using var reader = new StringReader(content);
+        using StringReader reader = new StringReader(content);
         string? line;
         while ((line = reader.ReadLine()) != null)
         {
@@ -318,7 +319,7 @@ public static partial class TextHelper
                 if (currentKey != null)
                     dict[currentKey] = CleanFieldValue(currentValue.ToString());
                 
-                var idx = line.IndexOf('=');
+                int idx = line.IndexOf('=');
                 if (idx > 1)
                 {
                     currentKey = NormalizeKey(line[1..idx]);
@@ -355,7 +356,7 @@ public static partial class TextHelper
         if (v.AsSpan().IndexOfAny("<[{\'&\n") < 0)
             return v.Trim();
 
-        var s = v;
+        string s = v;
 
         // comentários HTML
         s = HtmlPatterns.HtmlComment().Replace(s, "");
@@ -412,7 +413,7 @@ public static partial class TextHelper
         ReplaceText(line);
         
         // versão “inline”: não preserva parágrafos
-        var t = CleanText(line);
+        string t = CleanText(line);
         t = TextCleanupPatterns.Whitespace().Replace(t, " ").Trim();
         return t;
     }
@@ -420,14 +421,14 @@ public static partial class TextHelper
     public static string GetBaseKey(string? title)
     {
         if (string.IsNullOrWhiteSpace(title)) return string.Empty;
-        var t = title.Trim();
+        string t = title.Trim();
 
         // remove namespace se existir (User:, Template:, etc.)
-        var colon = t.IndexOf(':');
+        int colon = t.IndexOf(':');
         if (colon >= 0) t = t[(colon + 1)..];
 
         // pega só antes da primeira subpágina (/Lore, /Voicelines, etc.)
-        var slash = t.IndexOf('/');
+        int slash = t.IndexOf('/');
         if (slash >= 0) t = t[..slash];
 
         return t.Trim();
@@ -435,15 +436,15 @@ public static partial class TextHelper
 
     public static string BaseCharacterFromTitle(string title)
     {
-        var t = title.Trim();
-        var colon = t.IndexOf(':'); if (colon >= 0) t = t[(colon + 1)..];
-        var slash = t.IndexOf('/'); if (slash >= 0) t = t[..slash];
+        string t = title.Trim();
+        int colon = t.IndexOf(':'); if (colon >= 0) t = t[(colon + 1)..];
+        int slash = t.IndexOf('/'); if (slash >= 0) t = t[..slash];
         return t.Trim();
     }
 
     public static string? StripParens(string? s)
     {
-        var t = s.Trim();
+        string t = s.Trim();
         if (t.StartsWith("(") && t.EndsWith(")") && t.Length > 1)
             return t[1..^1].Trim();
         return t;
@@ -452,16 +453,16 @@ public static partial class TextHelper
     public static string? ExtractSection(string fullText, string heading)
     {
         // procura "== Heading ==" (varia número de "="; usamos \s* para tolerância)
-        var m = DynamicPatterns.GetSectionHeadingRegex(heading).Match(fullText);
+        Match m = DynamicPatterns.GetSectionHeadingRegex(heading).Match(fullText);
         if (!m.Success) return null;
 
         int start = m.Index + m.Length;
         // até o próximo heading de mesmo nível (ou qualquer == ... ==)
-        var next = TextCleanupPatterns.AnyHeading().Match(fullText[start..]);
+        Match next = TextCleanupPatterns.AnyHeading().Match(fullText[start..]);
         string section = next.Success ? fullText.Substring(start, next.Index) : fullText[start..];
 
         // limpa wiki/HTML preservando parágrafos
-        var cleaned = CleanText(section);
+        string cleaned = CleanText(section);
         return string.IsNullOrWhiteSpace(cleaned) ? null : cleaned;
     }
 
@@ -474,7 +475,7 @@ public static partial class TextHelper
     {
         if (string.IsNullOrWhiteSpace(v)) return null;
         // divide por vírgulas / quebras / <br> já devem ter sido normalizadas por CleanInline
-        var list = v.Split(new[] { ',', ';', '/', '|' }, StringSplitOptions.RemoveEmptyEntries)
+        List<string?> list = v.Split(new[] { ',', ';', '/', '|' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => CleanInline(s))
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -484,9 +485,9 @@ public static partial class TextHelper
 
     public static string? ExtractDescriptionTemplate(string text)
     {
-        var blk = ExtractTemplateBlock(text, "Description");
+        string? blk = ExtractTemplateBlock(text, "Description");
         if (blk is null) return null;
-        var m = DescriptionPatterns.DescriptionTemplateBody().Match(blk);
+        Match m = DescriptionPatterns.DescriptionTemplateBody().Match(blk);
         return m.Success ? CleanInline(m.Groups[1].Value) : null;
     }
 
@@ -495,21 +496,21 @@ public static partial class TextHelper
     public static string? ExtractGalleryContent(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
-        var m = HtmlPatterns.GalleryRegex().Match(text);
+        Match m = HtmlPatterns.GalleryRegex().Match(text);
         return m.Success ? m.Groups[1].Value : null;
     }
 
     public static string? ExtractDescriptionSection(string text)
     {
-        var m = DescriptionPatterns.DescriptionSection().Match(text);
+        Match m = DescriptionPatterns.DescriptionSection().Match(text);
         if (!m.Success) return null;
-        var body = CleanText(m.Groups[1].Value.Trim());
+        string body = CleanText(m.Groups[1].Value.Trim());
         return string.IsNullOrWhiteSpace(body) ? null : body;
     }
 
     public static string? ExtractChangeHistoryVersion(string text)
     {
-        var m = CharacterPatterns.ChangeHistoryVersion().Match(text);
+        Match m = CharacterPatterns.ChangeHistoryVersion().Match(text);
         return m.Success ? CleanInline(m.Groups[1].Value) : null;
     }
 
@@ -519,8 +520,8 @@ public static partial class TextHelper
 
     public static string? ExtractDialogueBlockContent(string section)
     {
-        var start = DialoguePatterns.DialogueStart().Match(section);
-        var end = DialoguePatterns.DialogueEnd().Match(section);
+        Match start = DialoguePatterns.DialogueStart().Match(section);
+        Match end = DialoguePatterns.DialogueEnd().Match(section);
         if (!start.Success || !end.Success || end.Index <= start.Index) return null;
         return section.Substring(start.Index + start.Length, end.Index - (start.Index + start.Length)).Trim();
     }
@@ -529,14 +530,14 @@ public static partial class TextHelper
 
     public static List<string>? ExtractAudioFiles(string? text, out string? withoutAudio)
     {
-        var files = new List<string?>();
+        List<string?> files = new List<string?>();
         withoutAudio = text;
 
         if (string.IsNullOrEmpty(text)) return null;
 
         withoutAudio = DialoguePatterns.AudioTemplate().Replace(text, m =>
         {
-            var file = CleanInline(m.Groups[1].Value);
+            string? file = CleanInline(m.Groups[1].Value);
             if (!string.IsNullOrWhiteSpace(file)) files.Add(file);
             return "";
         });
@@ -552,14 +553,14 @@ public static partial class TextHelper
 
     public static decimal? ToDecimal(string? s)
         => decimal.TryParse((s ?? "").Trim(), System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : null;
+            System.Globalization.CultureInfo.InvariantCulture, out decimal n) ? n : null;
 
     public static int? ToInt(string? s)
-        => int.TryParse((s ?? "").Trim(), out var n) ? n : null;
+        => int.TryParse((s ?? "").Trim(), out int n) ? n : null;
 
     public static decimal? ToPercent(Dictionary<string,string> f, string key)
     {
-        if (!f.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw)) return null;
+        if (!f.TryGetValue(key, out string? raw) || string.IsNullOrWhiteSpace(raw)) return null;
         raw = raw.Trim().TrimEnd('%');
         return ToDecimal(raw);
     }
@@ -567,14 +568,14 @@ public static partial class TextHelper
     public static string? ExtractFileFromCell(string cell)
     {
         // procura [[File:...]]
-        var m = TableCellPatterns.FileCell().Match(cell);
+        Match m = TableCellPatterns.FileCell().Match(cell);
         if (m.Success) return m.Groups[1].Value.Trim();
         return CleanCell(cell);
     }
 
     public static string CleanCell(string s)
     {
-        var t = s;
+        string t = s;
 
         // <br> vira " - " pra juntar partes
         t = TableCellPatterns.CellBreak().Replace(t, " - ");
@@ -598,7 +599,7 @@ public static partial class TextHelper
         return CleanInline(t);
     }
     
-    public static int? TryInt(string? s) => int.TryParse((s ?? "").Trim(), out var n) ? n : null;
+    public static int? TryInt(string? s) => int.TryParse((s ?? "").Trim(), out int n) ? n : null;
 
     public static string NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
@@ -607,20 +608,20 @@ public static partial class TextHelper
     public static string ExtractTemplate(string name, string text)
     {
         // simples/non-greedy; funciona bem para esses infoboxes
-        var m = DynamicPatterns.GetTemplateRegex(name).Match(text);
+        Match m = DynamicPatterns.GetTemplateRegex(name).Match(text);
         return m.Success ? m.Groups["body"].Value : null;
     }
 
     public static Dictionary<string, string> ParseTemplateParams(string body)
     {
-        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (string.IsNullOrEmpty(body)) return dict;
 
         // | key = value   (para; até próximo | ou fim de template)
         foreach (Match m in TemplatePatterns.TemplateParam().Matches(body))
         {
-            var k = m.Groups["k"].Value.Trim();
-            var v = m.Groups["v"].Value.Trim();
+            string k = m.Groups["k"].Value.Trim();
+            string v = m.Groups["v"].Value.Trim();
             dict[k] = v;
         }
         return dict;

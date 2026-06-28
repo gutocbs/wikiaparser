@@ -22,20 +22,20 @@ public static partial class CompanionParser
         if (!pageTitle.EndsWith("/Companion", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var character = TextHelper.BaseCharacterFromTitle(pageTitle);
+        string character = TextHelper.BaseCharacterFromTitle(pageTitle);
 
-        var dto = new CompanionDto { Character = character };
+        CompanionDto dto = new CompanionDto { Character = character };
 
         // 2) Idle Quotes
         dto.IdleQuotes = ExtractIdleQuotes(wikitext);
 
         // 3) Dialogue principal
-        var dialogues = new List<CompanionDialogueScenarioDto>();
-        var mainDlg = ExtractDialogueScenario(wikitext, "Dialogue", scenarioTitle: null);
+        List<CompanionDialogueScenarioDto> dialogues = new List<CompanionDialogueScenarioDto>();
+        CompanionDialogueScenarioDto? mainDlg = ExtractDialogueScenario(wikitext, "Dialogue", scenarioTitle: null);
         if (mainDlg != null) dialogues.Add(mainDlg);
 
         // 4) Special Dialogue (subseções ===Title===)
-        var specials = ExtractSpecialDialogues(wikitext);
+        List<CompanionDialogueScenarioDto>? specials = ExtractSpecialDialogues(wikitext);
         if (specials != null && specials.Count > 0) dialogues.AddRange(specials);
 
         dto.Dialogues = dialogues.Count > 0 ? dialogues : null;
@@ -50,25 +50,25 @@ public static partial class CompanionParser
     // ---------- Idle Quotes ----------
     private static List<CompanionQuoteDto>? ExtractIdleQuotes(string text)
     {
-        var section = TextHelper.ExtractSection(text, "Idle Quotes");
+        string? section = TextHelper.ExtractSection(text, "Idle Quotes");
         if (section == null) return null;
 
-        var block = ExtractDialogueBlock(section);
+        string? block = ExtractDialogueBlock(section);
         if (block == null) return null;
 
-        var quotes = new List<CompanionQuoteDto>();
+        List<CompanionQuoteDto> quotes = new List<CompanionQuoteDto>();
         string? currentContext = null;
 
-        using var sr = new StringReader(block);
+        using StringReader sr = new StringReader(block);
         string? line;
         while ((line = sr.ReadLine()) != null)
         {
-            var trimmed = line.Trim();
+            string trimmed = line.Trim();
 
             // context lines iniciadas por ';' (ex.: ;(When the player is nearby))
             if (trimmed.StartsWith(";", StringComparison.Ordinal))
             {
-                var ctx = EdgeNowikiRegex().Replace(trimmed[1..].Trim(), "").Trim();
+                string? ctx = EdgeNowikiRegex().Replace(trimmed[1..].Trim(), "").Trim();
                 ctx = TextHelper.StripParens(ctx);
                 currentContext = TextHelper.CleanInline(ctx);
                 continue;
@@ -77,7 +77,7 @@ public static partial class CompanionParser
             // linhas de fala iniciadas por ':' e contendo {{DIcon|Idle}} ou {{DIcon}}
             if (trimmed.StartsWith(":", StringComparison.Ordinal))
             {
-                var t = trimmed.TrimStart(':').Trim();
+                string t = trimmed.TrimStart(':').Trim();
 
                 // remove ícones e marcações
                 t = TextHelper.RemoveDialogueIcons(t);
@@ -94,14 +94,14 @@ public static partial class CompanionParser
     // ---------- Dialogue (principal ou cenários especiais) ----------
     private static CompanionDialogueScenarioDto? ExtractDialogueScenario(string fullText, string sectionTitle, string? scenarioTitle)
     {
-        var section = TextHelper.ExtractSection(fullText, sectionTitle);
+        string? section = TextHelper.ExtractSection(fullText, sectionTitle);
         if (section == null) return null;
 
         // dentro da seção, pega entre {{Dialogue Start}} e {{Dialogue End}}
-        var block = ExtractDialogueBlock(section);
+        string? block = ExtractDialogueBlock(section);
         if (block == null) return null;
 
-        var (entries, conditions) = ParseDialogueEntries(block);
+        (List<CompanionDialogueEntryDto> entries, List<string> conditions) = ParseDialogueEntries(block);
 
         if (entries.Count == 0 && conditions.Count == 0) return null;
 
@@ -115,20 +115,20 @@ public static partial class CompanionParser
 
     private static List<CompanionDialogueScenarioDto>? ExtractSpecialDialogues(string fullText)
     {
-        var special = TextHelper.ExtractSection(fullText, "Special Dialogue");
+        string? special = TextHelper.ExtractSection(fullText, "Special Dialogue");
         if (special == null) return null;
 
-        var result = new List<CompanionDialogueScenarioDto>();
+        List<CompanionDialogueScenarioDto> result = new List<CompanionDialogueScenarioDto>();
 
         // dividir por subheadings "=== Title ==="
-        var matches = SpecialDialogueHeadingRegex().Matches(special);
+        MatchCollection matches = SpecialDialogueHeadingRegex().Matches(special);
         if (matches.Count == 0)
         {
             // às vezes não há subtítulos; tenta parsear bloco diretamente
-            var single = ExtractDialogueBlock(special);
+            string? single = ExtractDialogueBlock(special);
             if (single != null)
             {
-                var (entries, conditions) = ParseDialogueEntries(single);
+                (List<CompanionDialogueEntryDto> entries, List<string> conditions) = ParseDialogueEntries(single);
                 if (entries.Count > 0 || conditions.Count > 0)
                     result.Add(new CompanionDialogueScenarioDto { ScenarioTitle = null, Conditions = conditions.Count > 0 ? conditions : null, Entries = entries });
             }
@@ -137,15 +137,15 @@ public static partial class CompanionParser
 
         for (int i = 0; i < matches.Count; i++)
         {
-            var title = TextHelper.CleanInline(matches[i].Groups[1].Value);
+            string? title = TextHelper.CleanInline(matches[i].Groups[1].Value);
             int start = matches[i].Index + matches[i].Length;
             int end = (i + 1 < matches.Count) ? matches[i + 1].Index : special.Length;
-            var chunk = special.Substring(start, end - start);
+            string chunk = special.Substring(start, end - start);
 
-            var block = ExtractDialogueBlock(chunk);
+            string? block = ExtractDialogueBlock(chunk);
             if (block == null) continue;
 
-            var (entries, conditions) = ParseDialogueEntries(block);
+            (List<CompanionDialogueEntryDto> entries, List<string> conditions) = ParseDialogueEntries(block);
             if (entries.Count == 0 && conditions.Count == 0) continue;
 
             result.Add(new CompanionDialogueScenarioDto
@@ -161,22 +161,22 @@ public static partial class CompanionParser
 
     private static (List<CompanionDialogueEntryDto> entries, List<string> conditions) ParseDialogueEntries(string dialogueBlock)
     {
-        var entries = new List<CompanionDialogueEntryDto>();
-        var conditions = new List<string?>();
+        List<CompanionDialogueEntryDto> entries = new List<CompanionDialogueEntryDto>();
+        List<string?> conditions = new List<string?>();
         string? currentChoiceGroup = null;
 
-        using var sr = new StringReader(dialogueBlock);
+        using StringReader sr = new StringReader(dialogueBlock);
         string? line;
         while ((line = sr.ReadLine()) != null)
         {
-            var raw = line.Trim();
+            string raw = line.Trim();
 
             if (string.IsNullOrWhiteSpace(raw)) continue;
 
             // linhas de condição começando com ';' (inclui <nowiki>...<nowiki>)
             if (raw.StartsWith(";", StringComparison.Ordinal))
             {
-                var cond = EdgeNowikiRegex().Replace(raw[1..].Trim(), "").Trim();
+                string? cond = EdgeNowikiRegex().Replace(raw[1..].Trim(), "").Trim();
                 cond = TextHelper.StripParens(cond);
                 cond = TextHelper.CleanInline(cond);
                 if (!string.IsNullOrWhiteSpace(cond)) conditions.Add(cond);
@@ -186,7 +186,7 @@ public static partial class CompanionParser
             // linhas de “player choice”: ":{{DIcon}} Pergunta"
             if (raw.StartsWith(":", StringComparison.Ordinal))
             {
-                var body = raw.TrimStart(':').Trim();
+                string body = raw.TrimStart(':').Trim();
 
                 if (TextHelper.ContainsDialogueIcon(body))
                 {
@@ -205,8 +205,8 @@ public static partial class CompanionParser
 
                 // fala do NPC na forma de um único ':' com áudio embutido
                 // padrão: {{A|file.ogg}} '''Nome:''' Texto
-                var audio = ExtractAudioFiles(body, out var remainder);
-                var spoken = TextHelper.CleanText(RemoveSpeakerBold(remainder));
+                List<string>? audio = ExtractAudioFiles(body, out string? remainder);
+                string spoken = TextHelper.CleanText(RemoveSpeakerBold(remainder));
 
                 if (!string.IsNullOrWhiteSpace(spoken) || (audio?.Count ?? 0) > 0)
                     entries.Add(new CompanionDialogueEntryDto { Role = "NPC", Text = spoken, AudioFiles = audio, ChoiceGroup = currentChoiceGroup });
@@ -217,9 +217,9 @@ public static partial class CompanionParser
             // linhas de resposta do NPC vinculadas a uma escolha começam com '::'
             if (raw.StartsWith("::", StringComparison.Ordinal))
             {
-                var body = raw.TrimStart(':').TrimStart(':').Trim();
-                var audio = ExtractAudioFiles(body, out var remainder);
-                var spoken = TextHelper.CleanText(RemoveSpeakerBold(remainder));
+                string body = raw.TrimStart(':').TrimStart(':').Trim();
+                List<string>? audio = ExtractAudioFiles(body, out string? remainder);
+                string spoken = TextHelper.CleanText(RemoveSpeakerBold(remainder));
 
                 if (!string.IsNullOrWhiteSpace(spoken) || (audio?.Count ?? 0) > 0)
                     entries.Add(new CompanionDialogueEntryDto { Role = "NPC", Text = spoken, AudioFiles = audio, ChoiceGroup = currentChoiceGroup });
@@ -243,7 +243,7 @@ public static partial class CompanionParser
     private static string RemoveSpeakerBold(string? text)
     {
         // remove padrões como: '''Faruzan:''' no começo da fala
-        var s = text.Trim();
+        string s = text.Trim();
         s = SpeakerBoldPrefixRegex().Replace(s, "");
         return s;
     }

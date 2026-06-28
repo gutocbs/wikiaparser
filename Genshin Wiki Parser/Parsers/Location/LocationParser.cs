@@ -24,13 +24,13 @@ public static partial class LocationParser
         if (string.IsNullOrWhiteSpace(wikiText)) return null;
         if (!wikiText.Contains("{{Location Infobox", StringComparison.OrdinalIgnoreCase)) return null;
 
-        var dto = new LocationDto { Title = pageTitle };
+        LocationDto dto = new LocationDto { Title = pageTitle };
 
         // 1) Infobox
-        var infobox = TextHelper.ExtractTemplate("Location Infobox", wikiText);
+        string infobox = TextHelper.ExtractTemplate("Location Infobox", wikiText);
         if (!string.IsNullOrEmpty(infobox))
         {
-            var map = TextHelper.ParseTemplateParams(infobox);
+            Dictionary<string, string> map = TextHelper.ParseTemplateParams(infobox);
 
             dto.Type    = TextHelper.Get(map, "type");
             dto.Subtype = TextHelper.Get(map, "type2");
@@ -40,27 +40,27 @@ public static partial class LocationParser
         }
 
         // 2) Summary do Location Intro (com If Self)
-        var intro = TextHelper.ExtractTemplate("Location Intro", wikiText);
+        string intro = TextHelper.ExtractTemplate("Location Intro", wikiText);
         if (!string.IsNullOrEmpty(intro))
         {
             // resolve {{If Self|<página>|A|B}}
             intro = ResolveIfSelf(intro, pageTitle);
-            var introMap = TextHelper.ParseTemplateParams(intro);
-            var descRaw = TextHelper.Get(introMap, "description");
+            Dictionary<string, string> introMap = TextHelper.ParseTemplateParams(intro);
+            string? descRaw = TextHelper.Get(introMap, "description");
             if (!string.IsNullOrWhiteSpace(descRaw))
                 dto.Summary = TextHelper.CleanText(descRaw);
         }
 
         // 3) NPCs (seção ==NPCs==)
-        foreach (var name in ExtractNpcNames(wikiText))
+        foreach (string name in ExtractNpcNames(wikiText))
             dto.Npcs.Add(name);
 
         // 5) Descriptions (seção ==Descriptions== com {{Description|texto|fonte}})
-        foreach (var d in ExtractDescriptionsSection(wikiText))
+        foreach (LocationDescriptionDto d in ExtractDescriptionsSection(wikiText))
             dto.Descriptions.Add(d);
 
         // Sinaliza “inválido” se estiver vazio demais (ajuste como preferir)
-        var hasCore =
+        bool hasCore =
             !string.IsNullOrWhiteSpace(dto.Type) ||
             !string.IsNullOrWhiteSpace(dto.Region) ||
             !string.IsNullOrWhiteSpace(dto.Summary);
@@ -70,14 +70,14 @@ public static partial class LocationParser
     // ---- helpers ----
     private static IEnumerable<string> ExtractNpcNames(string text)
     {
-        var m = NpcsSectionRegex().Match(text);
+        Match m = NpcsSectionRegex().Match(text);
         if (!m.Success) yield break;
 
-        var blk = m.Groups["blk"].Value;
-        foreach (var line in blk.Split('\n'))
+        string blk = m.Groups["blk"].Value;
+        foreach (string line in blk.Split('\n'))
         {
             if (!line.TrimStart().StartsWith("*")) continue;
-            var name = TextHelper.CleanText(line.Replace("*", "").Trim());
+            string name = TextHelper.CleanText(line.Replace("*", "").Trim());
             if (!string.IsNullOrWhiteSpace(name))
                 yield return name;
         }
@@ -85,14 +85,14 @@ public static partial class LocationParser
 
     private static IEnumerable<LocationDescriptionDto> ExtractDescriptionsSection(string text)
     {
-        var m = DescriptionsSectionRegex().Match(text);
+        Match m = DescriptionsSectionRegex().Match(text);
         if (!m.Success) yield break;
 
-        var blk = m.Groups["blk"].Value;
+        string blk = m.Groups["blk"].Value;
         foreach (Match d in LocationDescriptionTemplateRegex().Matches(blk))
         {
-            var txt = TextHelper.CleanText(d.Groups["txt"].Value);
-            var src = TextHelper.CleanText(d.Groups["src"].Value);
+            string txt = TextHelper.CleanText(d.Groups["txt"].Value);
+            string src = TextHelper.CleanText(d.Groups["src"].Value);
             if (!string.IsNullOrWhiteSpace(txt))
                 yield return new LocationDescriptionDto { Text = txt, Source = TextHelper.NullIfEmpty(src) };
         }
@@ -103,9 +103,9 @@ public static partial class LocationParser
         return IfSelfTemplateRegex().Replace(raw,
             m =>
             {
-                var page = TextHelper.CleanText(m.Groups[1].Value);
-                var ifYes = TextHelper.CleanText(m.Groups[2].Value);
-                var ifNo  = TextHelper.CleanText(m.Groups[3].Value);
+                string page = TextHelper.CleanText(m.Groups[1].Value);
+                string ifYes = TextHelper.CleanText(m.Groups[2].Value);
+                string ifNo  = TextHelper.CleanText(m.Groups[3].Value);
                 return page.Equals(pageTitle, StringComparison.OrdinalIgnoreCase) ? ifYes : ifNo;
             });
     }

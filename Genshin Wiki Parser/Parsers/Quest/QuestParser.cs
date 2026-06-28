@@ -14,11 +14,11 @@ public static partial class QuestParser
         if (string.IsNullOrWhiteSpace(wikiText)) return null;
         if (!wikiText.Contains("{{Quest Infobox", StringComparison.OrdinalIgnoreCase)) return null;
 
-        var dto = new QuestDto { Title = pageTitle };
+        QuestDto dto = new QuestDto { Title = pageTitle };
 
         // 1) Infobox
-        var infobox = TextHelper.ExtractTemplate("Quest Infobox", wikiText);
-        var map  = TextHelper.ParseTemplateParams(infobox);
+        string infobox = TextHelper.ExtractTemplate("Quest Infobox", wikiText);
+        Dictionary<string, string> map  = TextHelper.ParseTemplateParams(infobox);
 
         dto.Id           = TextHelper.TryInt(TextHelper.Get(map, "id"));
         dto.Type         = TextHelper.Get(map, "type");
@@ -34,12 +34,12 @@ public static partial class QuestParser
         dto.Subarea      = TextHelper.CleanText(TextHelper.Get(map, "subarea")).Replace(" (Subarea)", "");
         
         // elenco (separado por ';')
-        var chars = TextHelper.Get(map, "characters");
+        string? chars = TextHelper.Get(map, "characters");
         if (!string.IsNullOrWhiteSpace(chars))
         {
-            foreach (var c in chars.Split(';'))
+            foreach (string c in chars.Split(';'))
             {
-                var v = TextHelper.CleanText(c);
+                string v = TextHelper.CleanText(c);
                 if (!string.IsNullOrWhiteSpace(v))
                     dto.Characters.Add(v.Trim());
             }
@@ -58,9 +58,9 @@ public static partial class QuestParser
     // ---------- Partes específicas de Quest ----------
     private static string? ExtractQuestDescription(string text)
     {
-        foreach (var t in TextHelper.ExtractTemplates("Quest Description", text))
+        foreach (string t in TextHelper.ExtractTemplates("Quest Description", text))
         {
-            var inner = TextHelper.CleanText(t);
+            string inner = TextHelper.CleanText(t);
             if (!string.IsNullOrWhiteSpace(inner)) return inner.Replace("|","");
         }
         return null;
@@ -68,24 +68,24 @@ public static partial class QuestParser
 
     private static List<DialogueSection> ExtractDialogues(string text)
     {
-        var result = new List<DialogueSection>();
+        List<DialogueSection> result = new List<DialogueSection>();
 
         // pega blocos entre {{Dialogue Start}} ... {{Dialogue End}}
         foreach (Match blk in TextHelper.MatchDialogueBlocks(text))
         {
-            var body = blk.Groups["body"].Value;
-            var section = new DialogueSection();
+            string body = blk.Groups["body"].Value;
+            DialogueSection section = new DialogueSection();
 
-            using var reader = new StringReader(body);
+            using StringReader reader = new StringReader(body);
             string? raw;
             while ((raw = reader.ReadLine()) != null)
             {
-                var line = raw.TrimEnd();
+                string line = raw.TrimEnd();
 
                 if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----")) continue;
 
                 // Contexto de cena: ;( ... )
-                if (TryExtractContext(line, out var context))
+                if (TryExtractContext(line, out string context))
                 {
                     // inicia nova seção quando encontrar próximo contexto
                     if (!string.IsNullOrWhiteSpace(section.Context) || section.Lines.Count > 0)
@@ -98,33 +98,33 @@ public static partial class QuestParser
                 }
 
                 // Linhas de diálogo/choices começam com ":"
-                if (TryGetDialogueBody(line, out var dialogueBody))
+                if (TryGetDialogueBody(line, out string dialogueBody))
                 {
                     // Choice: :{{DIcon}} Text
                     if (TextHelper.StartsWithDialogueIcon(dialogueBody))
                     {
-                        var textClean = TextHelper.CleanText(line);
+                        string textClean = TextHelper.CleanText(line);
                         if (!string.IsNullOrWhiteSpace(textClean))
                             section.Lines.Add(new DialogueLine { Speaker = "[Choice]", Text = textClean.Replace("DIcon","").Replace(":;","") });
                         continue;
                     }
                     
                     // Remove templates de áudio para facilitar parse do speaker/texto
-                    var noAudio = TextHelper.RemoveAudioTemplates(line);
+                    string noAudio = TextHelper.RemoveAudioTemplates(line);
 
                     // Formato típico: : '''Speaker:''' Text
-                    var mTalk = DialogueSpeakerRegex().Match(noAudio);
+                    Match mTalk = DialogueSpeakerRegex().Match(noAudio);
                     if (mTalk.Success)
                     {
-                        var sp = TextHelper.CleanText(mTalk.Groups["sp"].Value);
-                        var tx = TextHelper.CleanText(mTalk.Groups["tx"].Value);
+                        string sp = TextHelper.CleanText(mTalk.Groups["sp"].Value);
+                        string tx = TextHelper.CleanText(mTalk.Groups["tx"].Value);
                         if (!string.IsNullOrWhiteSpace(tx))
                             section.Lines.Add(new DialogueLine { Speaker = sp, Text = tx.Replace(":;","") });
                     }
                     else
                     {
                         // fallback: limpa wiki e joga como narrativa sem speaker
-                        var txt = TextHelper.CleanText(noAudio);
+                        string txt = TextHelper.CleanText(noAudio);
                         if (!string.IsNullOrWhiteSpace(txt))
                             section.Lines.Add(new DialogueLine { Speaker = null, Text = txt.Replace(":;","") });
                     }
@@ -141,10 +141,10 @@ public static partial class QuestParser
     private static bool TryExtractContext(string line, out string context)
     {
         context = string.Empty;
-        var trimmed = line.Trim();
+        string trimmed = line.Trim();
         if (!trimmed.StartsWith(";", StringComparison.Ordinal)) return false;
 
-        var body = trimmed[1..].TrimStart();
+        string body = trimmed[1..].TrimStart();
         if (body.Length <= 2 || body[0] != '(' || body[^1] != ')') return false;
 
         context = body[1..^1];
@@ -154,7 +154,7 @@ public static partial class QuestParser
     private static bool TryGetDialogueBody(string line, out string body)
     {
         body = string.Empty;
-        var span = line.AsSpan().TrimStart();
+        ReadOnlySpan<char> span = line.AsSpan().TrimStart();
         if (span.IsEmpty || span[0] != ':') return false;
 
         body = span[1..].TrimStart().ToString();
