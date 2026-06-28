@@ -54,7 +54,6 @@ public static partial class QuestParser
         return dto;
     }
 
-    
     // ---------- Partes específicas de Quest ----------
     private static string? ExtractQuestDescription(string text)
     {
