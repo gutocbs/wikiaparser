@@ -44,9 +44,6 @@ public static class EnemyParser
     // ----------------- Description (primeiro template) -----------------
     private static string? ExtractFirstDescriptionTemplate(string text)
     {
-        var rx = new Regex(@"\{\{\s*Description\s*\|\s*(.+?)\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        var m = rx.Match(text);
-        if (!m.Success) return null;
-        return TextHelper.CleanInline(m.Groups[1].Value);
+        return TextHelper.ExtractDescriptionTemplate(text);
     }
 }

@@ -4,8 +4,14 @@ using Genshin.Wiki.Parser.Models.Artifacts;
 
 namespace Genshin.Wiki.Parser.Parsers.Artifact;
 
-public static class ArtifactParser
+public static partial class ArtifactParser
 {
+    [GeneratedRegex(@"_(tl|rm)$", RegexOptions.IgnoreCase)]
+    private static partial Regex OtherLanguageVariantRegex();
+
+    [GeneratedRegex(@"^\d+_", RegexOptions.IgnoreCase)]
+    private static partial Regex OtherLanguageIndexPrefixRegex();
+
     public static ArtifactPieceDto? TryParse(string? wikitext)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
@@ -49,15 +55,14 @@ public static class ArtifactParser
         if (string.IsNullOrWhiteSpace(imageField)) return null;
 
         // pode vir como "<gallery> ... </gallery>" ou só "File.png"
-        var m = Regex.Match(imageField, @"<gallery[^>]*>(.*?)</gallery>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        if (!m.Success)
+        var content = TextHelper.ExtractGalleryContent(imageField);
+        if (content is null)
         {
             var single = TextHelper.CleanInline(imageField);
             if (string.IsNullOrWhiteSpace(single)) return null;
             return new ArtifactImageDto { Primary = single };
         }
 
-        var content = m.Groups[1].Value;
         string? primary = null;
         var extras = new List<string?>();
 
@@ -84,27 +89,17 @@ public static class ArtifactParser
 
     private static string? ExtractDescriptionTemplate(string text)
     {
-        var blk = TextHelper.ExtractTemplateBlock(text, "Description");
-        if (blk is null) return null;
-        var m = Regex.Match(blk, @"^\s*Description\s*\|\s*(.+)$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        if (!m.Success) return null;
-        return TextHelper.CleanInline(m.Groups[1].Value);
+        return TextHelper.ExtractDescriptionTemplate(text);
     }
 
     private static string? ExtractLongDescription(string text)
     {
-        // seção ==Description== até próxima seção "==" ou fim
-        var m = Regex.Match(text, @"^==\s*Description\s*==\s*(.+?)(?=^\s*==|\Z)", RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-        if (!m.Success) return null;
-        var body = m.Groups[1].Value.Trim();
-        body = TextHelper.CleanText(body);
-        return string.IsNullOrWhiteSpace(body) ? null : body;
+        return TextHelper.ExtractDescriptionSection(text);
     }
 
     private static string? ExtractChangeHistoryVersion(string text)
     {
-        var m = Regex.Match(text, @"\{\{\s*Change\s+History\s*\|\s*([^}|]+)\s*\}\}", RegexOptions.IgnoreCase);
-        return m.Success ? TextHelper.CleanInline(m.Groups[1].Value) : null;
+        return TextHelper.ExtractChangeHistoryVersion(text);
     }
 
     private static Dictionary<string,string>? ExtractOtherLanguages(string text)
@@ -118,10 +113,10 @@ public static class ArtifactParser
         foreach (var kv in f)
         {
             // ignora variantes _tl (traduções literais) e _rm (romanizações) e também índices "1_en"
-            if (Regex.IsMatch(kv.Key, @"_(tl|rm)$", RegexOptions.IgnoreCase)) continue;
+            if (OtherLanguageVariantRegex().IsMatch(kv.Key)) continue;
 
             // normaliza chaves estilo "1_en" -> "en"
-            var key = Regex.Replace(kv.Key, @"^\d+_", "", RegexOptions.IgnoreCase);
+            var key = OtherLanguageIndexPrefixRegex().Replace(kv.Key, "");
             var val = TextHelper.CleanInline(kv.Value);
             if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(val))
                 dict[key] = val;

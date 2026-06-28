@@ -4,8 +4,14 @@ using Genshin.Wiki.Parser.Models.Character;
 
 namespace Genshin.Wiki.Parser.Parsers.Character;
 
-public static class VoiceOverParser
+public static partial class VoiceOverParser
 {
+    [GeneratedRegex(@"^vo_(\d{2})_(\d{2})_(title|tx|file|friendship|mention|quest|ascension)$", RegexOptions.IgnoreCase)]
+    private static partial Regex StoryVoiceOverFieldRegex();
+
+    [GeneratedRegex(@"^([a-z\-]+)_(\d+?)_(tx|file)$", RegexOptions.IgnoreCase)]
+    private static partial Regex CombatVoiceOverFieldRegex();
+
     /// <summary>
     /// Tenta parsear páginas "X/Voice-Overs".
     /// languageCode é opcional; se informado substitui {language} nos nomes de arquivo.
@@ -46,15 +52,12 @@ public static class VoiceOverParser
         var fields = TextHelper.ParseTemplateFields(templateContent, "VO/Story");
 
         // regex: vo_XX_YY_suffix
-        var rx = new Regex(@"^vo_(\d{2})_(\d{2})_(title|tx|file|friendship|mention|quest|ascension)$",
-                           RegexOptions.IgnoreCase);
-
         var byBase = new Dictionary<string, VoStoryLineDto>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var kv in fields)
         {
             var key = kv.Key; var val = kv.Value;
-            var m = rx.Match(key);
+            var m = StoryVoiceOverFieldRegex().Match(key);
             if (!m.Success) continue;
 
             var g = m.Groups[1].Value;   // grupo XX
@@ -107,14 +110,12 @@ public static class VoiceOverParser
         var fields = TextHelper.ParseTemplateFields(templateContent, "Combat VO");
 
         // ex.: "skill_1_tx", "burst_3_tx", "sprint-s_1_file", "hit-h_3_file"
-        var rx = new Regex(@"^([a-z\-]+)_(\d+?)_(tx|file)$", RegexOptions.IgnoreCase);
-
         var map = new Dictionary<string, Dictionary<int, VoCueDto>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var kv in fields)
         {
             var key = kv.Key; var val = kv.Value;
-            var m = rx.Match(key);
+            var m = CombatVoiceOverFieldRegex().Match(key);
             if (!m.Success) continue;
 
             var cat = m.Groups[1].Value;                 // categoria

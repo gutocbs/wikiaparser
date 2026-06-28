@@ -4,8 +4,17 @@ using Genshin.Wiki.Parser.Models.Books;
 
 namespace Genshin.Wiki.Parser.Parsers.Book;
 
-public static class BookCollectionParser
+public static partial class BookCollectionParser
 {
+    [GeneratedRegex(@"^vol(\d+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex AcquisitionVolumeKeyRegex();
+
+    [GeneratedRegex(@"<\s*br\s*/?>|\r?\n", RegexOptions.IgnoreCase)]
+    private static partial Regex AcquisitionSplitRegex();
+
+    [GeneratedRegex(@"^==\s*Vol\.\s*(\d+)\s*==\s*(.+?)(?=^\s*==|\Z)", RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex VolumeSectionRegex();
+
     public static BookCollectionDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
@@ -35,17 +44,15 @@ public static class BookCollectionParser
     private static Dictionary<int, List<string>> ExtractAcquisitions(Dictionary<string,string> f)
     {
         var dict = new Dictionary<int, List<string>>();
-        var rx = new Regex(@"^vol(\d+)$", RegexOptions.IgnoreCase);
-
         foreach (var kv in f)
         {
-            var m = rx.Match(kv.Key);
+            var m = AcquisitionVolumeKeyRegex().Match(kv.Key);
             if (!m.Success) continue;
             if (!int.TryParse(m.Groups[1].Value, out var idx)) continue;
 
             var value = kv.Value ?? "";
             // quebra por <br> / novas linhas
-            var split = Regex.Split(value, @"<\s*br\s*/?>|\r?\n", RegexOptions.IgnoreCase);
+            var split = AcquisitionSplitRegex().Split(value);
             var list = new List<string>();
             foreach (var s in split)
             {
@@ -62,11 +69,8 @@ public static class BookCollectionParser
     private static List<BookVolumeDto> ExtractVolumes(string text)
     {
         // pega blocos "==Vol. X==" até o próximo "=="
-        var rxVol = new Regex(@"^==\s*Vol\.\s*(\d+)\s*==\s*(.+?)(?=^\s*==|\Z)",
-                              RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
         var list = new List<BookVolumeDto>();
-        foreach (Match m in rxVol.Matches(text))
+        foreach (Match m in VolumeSectionRegex().Matches(text))
         {
             var idxStr = m.Groups[1].Value;
             if (!int.TryParse(idxStr, out var idx)) continue;
@@ -75,7 +79,7 @@ public static class BookCollectionParser
 
             // Description no início (se existir)
             string? desc = null;
-            var d = Regex.Match(body, @"\{\{\s*Description\s*\|\s*(.+?)\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var d = TextHelper.MatchDescriptionTemplate(body);
             if (d.Success)
             {
                 desc = TextHelper.CleanInline(d.Groups[1].Value);

@@ -4,8 +4,11 @@ using Genshin.Wiki.Parser.Models.Character;
 
 namespace Genshin.Wiki.Parser.Parsers.Character;
 
-public static class LoreParser
+public static partial class LoreParser
 {
+    [GeneratedRegex(@"^(?:title|text|friendship|mention)(\d+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex CharacterStoryFieldRegex();
+
     public static LoreDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
@@ -43,8 +46,7 @@ public static class LoreParser
         var list = new List<QuoteDto>();
 
         // Puxa blocos {{Quote|...}} com captura "preguiçosa" – nos dumps isso costuma ser simples
-        var rx = new Regex(@"\{\{\s*Quote\s*\|(.*?)\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        foreach (Match m in rx.Matches(text))
+        foreach (Match m in TextHelper.MatchQuoteTemplates(text))
         {
             var content = m.Groups[1].Value; // pode ser "texto|fonte" ou só "texto"
 
@@ -100,7 +102,7 @@ public static class LoreParser
         var maxN = 0;
         foreach (var k in fields.Keys)
         {
-            var m = Regex.Match(k, @"^(?:title|text|friendship|mention)(\d+)$", RegexOptions.IgnoreCase);
+            var m = CharacterStoryFieldRegex().Match(k);
             if (m.Success && int.TryParse(m.Groups[1].Value, out var n) && n > maxN) maxN = n;
         }
 

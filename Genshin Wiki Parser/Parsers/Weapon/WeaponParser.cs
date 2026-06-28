@@ -4,8 +4,14 @@ using Genshin.Wiki.Parser.Models.Weapon;
 
 namespace Genshin.Wiki.Parser.Parsers.Weapon;
 
-public static class WeaponParser
+public static partial class WeaponParser
 {
+    [GeneratedRegex(@"\((var\d+)\)", RegexOptions.IgnoreCase)]
+    private static partial Regex PassiveEffectVariableRegex();
+
+    [GeneratedRegex(@"^eff_rank([1-5])_var(\d+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex PassiveVarKeyRegex();
+
     public static WeaponDto? TryParse(string? wikitext)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
@@ -41,7 +47,7 @@ public static class WeaponParser
 
         // --- efeito com placeholders {varX} no lugar de (varX) ---
         var effectTemplate = TextHelper.CleanInline(TextHelper.Get(f, "effect")) ?? "";
-        effectTemplate = Regex.Replace(effectTemplate, @"\((var\d+)\)", "{$1}", RegexOptions.IgnoreCase);
+        effectTemplate = PassiveEffectVariableRegex().Replace(effectTemplate, "{$1}");
 
         var dto = new WeaponDto
         {
@@ -77,8 +83,7 @@ public static class WeaponParser
         if (string.IsNullOrWhiteSpace(imageField)) return null;
 
         string content = imageField;
-        var gm = Regex.Match(imageField, @"<gallery[^>]*>(.*?)</gallery>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        if (gm.Success) content = gm.Groups[1].Value;
+        content = TextHelper.ExtractGalleryContent(imageField) ?? content;
 
         string? baseImg = null, asc2 = null;
         var extras = new List<string?>();
@@ -108,11 +113,9 @@ public static class WeaponParser
     {
         // mapeia "var1","var2",... -> array [rank1..rank5]
         var dict = new Dictionary<string, string?[]>(StringComparer.OrdinalIgnoreCase);
-        var re = new Regex(@"^eff_rank([1-5])_var(\d+)$", RegexOptions.IgnoreCase);
-
         foreach (var kv in fields)
         {
-            var m = re.Match(kv.Key);
+            var m = PassiveVarKeyRegex().Match(kv.Key);
             if (!m.Success) continue;
 
             int rank = int.Parse(m.Groups[1].Value);        // 1..5
@@ -164,27 +167,16 @@ public static class WeaponParser
 
     private static string? ExtractDescriptionTemplate(string text)
     {
-        var blk = TextHelper.ExtractTemplateBlock(text, "Description");
-        if (blk is null) return null;
-        // {{Description|...}} → campo sem chave (primeiro valor)
-        var m = Regex.Match(blk, @"^\s*Description\s*\|\s*(.+)$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        if (!m.Success) return null;
-        return TextHelper.CleanInline(m.Groups[1].Value);
+        return TextHelper.ExtractDescriptionTemplate(text);
     }
 
     private static string? ExtractLongDescription(string text)
     {
-        // seção ==Description== → pegar até próxima "==" ou fim
-        var m = Regex.Match(text, @"^==\s*Description\s*==\s*(.+?)(?=^\s*==|\Z)", RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-        if (!m.Success) return null;
-        var body = m.Groups[1].Value.Trim();
-        body = TextHelper.CleanText(body);
-        return string.IsNullOrWhiteSpace(body) ? null : body;
+        return TextHelper.ExtractDescriptionSection(text);
     }
 
     private static string? ExtractChangeHistoryVersion(string text)
     {
-        var m = Regex.Match(text, @"\{\{\s*Change\s+History\s*\|\s*([^}|]+)\s*\}\}", RegexOptions.IgnoreCase);
-        return m.Success ? TextHelper.CleanInline(m.Groups[1].Value) : null;
+        return TextHelper.ExtractChangeHistoryVersion(text);
     }
 }

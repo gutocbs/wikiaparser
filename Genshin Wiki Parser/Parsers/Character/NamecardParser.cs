@@ -4,8 +4,14 @@ using Genshin.Wiki.Parser.Models.Character;
 
 namespace Genshin.Wiki.Parser.Parsers.Character;
 
-public static class NamecardParser
+public static partial class NamecardParser
 {
+    [GeneratedRegex(@"^\s*[^:]+:\s")]
+    private static partial Regex NamespacePrefixRegex();
+
+    [GeneratedRegex(@"^\s*([^:]+?)\s*:\s*(.+)$")]
+    private static partial Regex NamecardTitleRegex();
+
     public static NamecardDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext) || string.IsNullOrWhiteSpace(pageTitle))
@@ -53,11 +59,11 @@ public static class NamecardParser
         // remove namespace se houver (ns=0, mas por via das dúvidas)
         var t = title.Trim();
         var colonNs = t.IndexOf(':'); 
-        if (colonNs >= 0 && !Regex.IsMatch(t, @"^\s*[^:]+:\s")) // namespace no começo? mantemos o resto
+        if (colonNs >= 0 && !NamespacePrefixRegex().IsMatch(t)) // namespace no começo? mantemos o resto
             t = t[(colonNs + 1)..].Trim();
 
         // captura antes do primeiro ':' como personagem
-        var m = Regex.Match(t, @"^\s*([^:]+?)\s*:\s*(.+)$");
+        var m = NamecardTitleRegex().Match(t);
         if (m.Success)
             return (m.Groups[1].Value.Trim(), t);
 

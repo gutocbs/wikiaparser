@@ -4,8 +4,17 @@ using Genshin.Wiki.Parser.Models.Character;
 
 namespace Genshin.Wiki.Parser.Parsers.Character;
 
-public static class CompanionParser
+public static partial class CompanionParser
 {
+    [GeneratedRegex(@"^<nowiki>|</nowiki>$", RegexOptions.IgnoreCase)]
+    private static partial Regex EdgeNowikiRegex();
+
+    [GeneratedRegex(@"^===\s*(.+?)\s*===\s*$", RegexOptions.Multiline)]
+    private static partial Regex SpecialDialogueHeadingRegex();
+
+    [GeneratedRegex(@"^'{2,5}[^']+:'{2,5}\s*", RegexOptions.IgnoreCase)]
+    private static partial Regex SpeakerBoldPrefixRegex();
+
     public static CompanionDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext) || string.IsNullOrWhiteSpace(pageTitle))
@@ -59,7 +68,7 @@ public static class CompanionParser
             // context lines iniciadas por ';' (ex.: ;(When the player is nearby))
             if (trimmed.StartsWith(";", StringComparison.Ordinal))
             {
-                var ctx = Regex.Replace(trimmed[1..].Trim(), @"^<nowiki>|</nowiki>$", "", RegexOptions.IgnoreCase).Trim();
+                var ctx = EdgeNowikiRegex().Replace(trimmed[1..].Trim(), "").Trim();
                 ctx = TextHelper.StripParens(ctx);
                 currentContext = TextHelper.CleanInline(ctx);
                 continue;
@@ -71,7 +80,7 @@ public static class CompanionParser
                 var t = trimmed.TrimStart(':').Trim();
 
                 // remove ícones e marcações
-                t = Regex.Replace(t, @"\{\{\s*DIcon(?:\|[^}]*)?\}\}\s*", "", RegexOptions.IgnoreCase);
+                t = TextHelper.RemoveDialogueIcons(t);
                 t = TextHelper.CleanText(t);
 
                 if (!string.IsNullOrWhiteSpace(t))
@@ -112,7 +121,7 @@ public static class CompanionParser
         var result = new List<CompanionDialogueScenarioDto>();
 
         // dividir por subheadings "=== Title ==="
-        var matches = Regex.Matches(special, @"^===\s*(.+?)\s*===\s*$", RegexOptions.Multiline);
+        var matches = SpecialDialogueHeadingRegex().Matches(special);
         if (matches.Count == 0)
         {
             // às vezes não há subtítulos; tenta parsear bloco diretamente
@@ -167,7 +176,7 @@ public static class CompanionParser
             // linhas de condição começando com ';' (inclui <nowiki>...<nowiki>)
             if (raw.StartsWith(";", StringComparison.Ordinal))
             {
-                var cond = Regex.Replace(raw[1..].Trim(), @"^<nowiki>|</nowiki>$", "", RegexOptions.IgnoreCase).Trim();
+                var cond = EdgeNowikiRegex().Replace(raw[1..].Trim(), "").Trim();
                 cond = TextHelper.StripParens(cond);
                 cond = TextHelper.CleanInline(cond);
                 if (!string.IsNullOrWhiteSpace(cond)) conditions.Add(cond);
@@ -179,13 +188,13 @@ public static class CompanionParser
             {
                 var body = raw.TrimStart(':').Trim();
 
-                if (Regex.IsMatch(body, @"\{\{\s*DIcon(?:\|[^}]*)?\}\}", RegexOptions.IgnoreCase))
+                if (TextHelper.ContainsDialogueIcon(body))
                 {
                     // inicia/continua um grupo de escolhas
                     currentChoiceGroup ??= Guid.NewGuid().ToString("N");
 
                     // remove {{DIcon}} e limpa
-                    body = Regex.Replace(body, @"\{\{\s*DIcon(?:\|[^}]*)?\}\}\s*", "", RegexOptions.IgnoreCase);
+                    body = TextHelper.RemoveDialogueIcons(body);
                     body = TextHelper.CleanText(body);
 
                     if (!string.IsNullOrWhiteSpace(body))
@@ -228,34 +237,19 @@ public static class CompanionParser
 
     private static List<string>? ExtractAudioFiles(string? text, out string? withoutAudio)
     {
-        var files = new List<string?>();
-        withoutAudio = text;
-
-        var rx = new Regex(@"\{\{\s*A\s*\|\s*([^}|]+)\s*\}\}", RegexOptions.IgnoreCase);
-        withoutAudio = rx.Replace(withoutAudio, m =>
-        {
-            var f = TextHelper.CleanInline(m.Groups[1].Value);
-            if (!string.IsNullOrWhiteSpace(f)) files.Add(f);
-            return ""; // remove tag de áudio do texto
-        });
-
-        if (files.Count == 0) return null;
-        return files;
+        return TextHelper.ExtractAudioFiles(text, out withoutAudio);
     }
 
     private static string RemoveSpeakerBold(string? text)
     {
         // remove padrões como: '''Faruzan:''' no começo da fala
         var s = text.Trim();
-        s = Regex.Replace(s, @"^'{2,5}[^']+:'{2,5}\s*", "", RegexOptions.IgnoreCase);
+        s = SpeakerBoldPrefixRegex().Replace(s, "");
         return s;
     }
 
     private static string? ExtractDialogueBlock(string section)
     {
-        var start = Regex.Match(section, @"\{\{\s*Dialogue Start\s*\}\}", RegexOptions.IgnoreCase);
-        var end   = Regex.Match(section, @"\{\{\s*Dialogue End\s*\}\}",   RegexOptions.IgnoreCase);
-        if (!start.Success || !end.Success || end.Index <= start.Index) return null;
-        return section.Substring(start.Index + start.Length, end.Index - (start.Index + start.Length)).Trim();
+        return TextHelper.ExtractDialogueBlockContent(section);
     }
 }

@@ -4,8 +4,11 @@ using System.Text.RegularExpressions;
 
 namespace Genshin.Wiki.Parser.Parsers.Quest;
 
-public static class QuestParser
+public static partial class QuestParser
 {
+    [GeneratedRegex(@"'''\s*(?<sp>[^:'\n]+?)\s*:\s*'''\s*(?<tx>.*)$")]
+    private static partial Regex DialogueSpeakerRegex();
+
     public static QuestDto? TryParse(string wikiText, string pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikiText)) return null;
@@ -68,23 +71,21 @@ public static class QuestParser
         var result = new List<DialogueSection>();
 
         // pega blocos entre {{Dialogue Start}} ... {{Dialogue End}}
-        var rx = new Regex(@"\{\{\s*Dialogue\s+Start\s*\}\}(?<body>[\s\S]*?)\{\{\s*Dialogue\s+End\s*\}\}",
-                           RegexOptions.IgnoreCase);
-        foreach (Match blk in rx.Matches(text))
+        foreach (Match blk in TextHelper.MatchDialogueBlocks(text))
         {
             var body = blk.Groups["body"].Value;
-            var lines = body.Split('\n');
             var section = new DialogueSection();
 
-            foreach (var raw in lines)
+            using var reader = new StringReader(body);
+            string? raw;
+            while ((raw = reader.ReadLine()) != null)
             {
                 var line = raw.TrimEnd();
 
                 if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----")) continue;
 
                 // Contexto de cena: ;( ... )
-                var mCtx = Regex.Match(line, @"^\s*;\s*\((?<c>.+?)\)\s*$");
-                if (mCtx.Success)
+                if (TryExtractContext(line, out var context))
                 {
                     // inicia nova seção quando encontrar próximo contexto
                     if (!string.IsNullOrWhiteSpace(section.Context) || section.Lines.Count > 0)
@@ -92,15 +93,15 @@ public static class QuestParser
                         result.Add(section);
                         section = new DialogueSection();
                     }
-                    section.Context = TextHelper.CleanText(mCtx.Groups["c"].Value);
+                    section.Context = TextHelper.CleanText(context);
                     continue;
                 }
 
                 // Linhas de diálogo/choices começam com ":"
-                if (Regex.IsMatch(line, @"^\s*:"))
+                if (TryGetDialogueBody(line, out var dialogueBody))
                 {
                     // Choice: :{{DIcon}} Text
-                    if (Regex.IsMatch(line, @"^\s*:\s*\{\{\s*DIcon", RegexOptions.IgnoreCase))
+                    if (TextHelper.StartsWithDialogueIcon(dialogueBody))
                     {
                         var textClean = TextHelper.CleanText(line);
                         if (!string.IsNullOrWhiteSpace(textClean))
@@ -109,13 +110,10 @@ public static class QuestParser
                     }
                     
                     // Remove templates de áudio para facilitar parse do speaker/texto
-                    var noAudio = Regex.Replace(line, @"\{\{\s*A\s*\|[^}]+\}\}", "", RegexOptions.IgnoreCase);
+                    var noAudio = TextHelper.RemoveAudioTemplates(line);
 
                     // Formato típico: : '''Speaker:''' Text
-                    var mTalk = Regex.Match(noAudio, @"'''\s*(?<sp>[^:'\n]+?)\s*:\s*'''\s*(?<tx>.+)$");
-                    if (!mTalk.Success)
-                        mTalk = Regex.Match(noAudio, @"'''\s*(?<sp>[^:'\n]+?)\s*:\s*'''\s*(?<tx>.*)$");
-
+                    var mTalk = DialogueSpeakerRegex().Match(noAudio);
                     if (mTalk.Success)
                     {
                         var sp = TextHelper.CleanText(mTalk.Groups["sp"].Value);
@@ -138,5 +136,28 @@ public static class QuestParser
         }
 
         return result;
+    }
+
+    private static bool TryExtractContext(string line, out string context)
+    {
+        context = string.Empty;
+        var trimmed = line.Trim();
+        if (!trimmed.StartsWith(";", StringComparison.Ordinal)) return false;
+
+        var body = trimmed[1..].TrimStart();
+        if (body.Length <= 2 || body[0] != '(' || body[^1] != ')') return false;
+
+        context = body[1..^1];
+        return context.Length > 0;
+    }
+
+    private static bool TryGetDialogueBody(string line, out string body)
+    {
+        body = string.Empty;
+        var span = line.AsSpan().TrimStart();
+        if (span.IsEmpty || span[0] != ':') return false;
+
+        body = span[1..].TrimStart().ToString();
+        return true;
     }
 }

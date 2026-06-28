@@ -1,29 +1,16 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Genshin.Wiki.Parser.RegexPatterns;
 
 namespace Genshin.Wiki.Parser.Helpers;
 
-public static class TextHelper
+public static partial class TextHelper
 {
-    private static readonly Regex HtmlCommentRegex = new(@"<!--.*?-->", RegexOptions.Singleline | RegexOptions.Compiled);
-    private static readonly Regex RefTagRegex = new(@"<ref[^>]*>.*?</ref>", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex ParagraphTagRegex = new(@"</?p\s*?>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex BreakTagRegex = new(@"<br\s*/?>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex HtmlTagRegex = new(@"<[^>]+>", RegexOptions.Singleline | RegexOptions.Compiled);
-    private static readonly Regex ExternalLinkRegex = new(@"\[(https?://[^\s\]]+)\s+([^\]]+)\]", RegexOptions.Compiled);
-    private static readonly Regex WikiPipeLinkRegex = new(@"\[\[([^\|\]]+)\|([^\]]+)\]\]", RegexOptions.Compiled);
-    private static readonly Regex WikiLinkRegex = new(@"\[\[([^\]]+)\]\]", RegexOptions.Compiled);
-    private static readonly Regex CategoryLinkRegex = new(@"\[\:\s*Category\:([^\]]+)\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex TemplateWithPipeRegex = new(@"\{\{[^{}|]+\|([^{}]+)\}\}", RegexOptions.Compiled);
-    private static readonly Regex TemplateWithoutPipeRegex = new(@"\{\{([^{}|]+)\}\}", RegexOptions.Compiled);
-    private static readonly Regex WikiQuoteMarkupRegex = new(@"'{2,5}", RegexOptions.Compiled);
-    private static readonly Regex TrailingHorizontalWhitespaceRegex = new(@"[ \t]+\n", RegexOptions.Compiled);
-    private static readonly Regex MultipleNewLinesRegex = new(@"\n{3,}", RegexOptions.Compiled);
-
-    public static Dictionary<string, string> _replacements = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> Replacements = new(StringComparer.OrdinalIgnoreCase)
     {
         { "Cataclysm|destruction", "Cataclysm" }
     };
+    
     // Extrai bloco de template com chaves balanceadas, ex.: {{Character Infobox ... }}
     public static string? ExtractTemplateBlock(string text, string templateName)
     {
@@ -69,8 +56,7 @@ public static class TextHelper
     public static int IndexOfTemplateStart(string text, string templateName)
     {
         // procura "{{Character Infobox" ignorando case e espaços após {{
-        var pattern = @"\{\{\s*" + Regex.Escape(templateName) + @"\b";
-        var m = Regex.Match(text, pattern, RegexOptions.IgnoreCase);
+        var m = DynamicPatterns.GetTemplateStartRegex(templateName).Match(text);
         return m.Success ? m.Index : -1;
     }
 
@@ -78,7 +64,7 @@ public static class TextHelper
     public static Dictionary<string, string> ParseTemplateFields(string templateContent)
     {
         // Remove o cabeçalho "Character Infobox"
-        var content = Regex.Replace(templateContent, @"^\s*Character\s+Infobox\b", "", RegexOptions.IgnoreCase);
+        var content = CharacterPatterns.CharacterInfoboxHeader().Replace(templateContent, "");
 
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string? currentKey = null;
@@ -166,7 +152,7 @@ public static class TextHelper
         var k = raw.Trim();
 
         // remove comentários no final da chave (raro, mas aparece)
-        k = Regex.Replace(k, @"<!--.*?-->", "", RegexOptions.Singleline).Trim();
+        k = HtmlPatterns.HtmlComment().Replace(k, "").Trim();
 
         // alguns dumps têm espaço no final da chave (ex. "weapon ")
         k = k.TrimEnd();
@@ -181,29 +167,29 @@ public static class TextHelper
         var s = v;
 
         // remove comentários HTML
-        s = Regex.Replace(s, @"<!--.*?-->", "", RegexOptions.Singleline);
+        s = HtmlPatterns.HtmlComment().Replace(s, "");
 
         // bullets começam com "*"
-        s = Regex.Replace(s, @"^\s*\*\s*", "\n*", RegexOptions.Multiline);
+        s = TextCleanupPatterns.LeadingBullet().Replace(s, "\n*");
 
         // [http://url Texto] -> "http://url Texto"
-        s = Regex.Replace(s, @"\[(https?://[^\s\]]+)\s+([^\]]+)\]", "$1 $2");
+        s = LinkPatterns.ExternalLink().Replace(s, "$1 $2");
 
         // [[Texto|Exibição]] -> Exibição ; [[Texto]] -> Texto
-        s = Regex.Replace(s, @"\[\[([^\|\]]+)\|([^\]]+)\]\]", "$2");
-        s = Regex.Replace(s, @"\[\[([^\]]+)\]\]", "$1");
+        s = LinkPatterns.WikiPipeLink().Replace(s, "$2");
+        s = LinkPatterns.WikiLink().Replace(s, "$1");
 
         // Templates COM pipe: {{algo|X}} -> X  (melhor esforço)
-        s = Regex.Replace(s, @"\{\{[^{}|]+\|([^{}]+)\}\}", "$1");
+        s = TemplatePatterns.TemplateWithPipe().Replace(s, "$1");
 
         // Templates SEM pipe: {{Cryo}} -> Cryo
-        s = Regex.Replace(s, @"\{\{([^{}|]+)\}\}", "$1");
+        s = TemplatePatterns.TemplateWithoutPipe().Replace(s, "$1");
 
         // <ref>...</ref> -> extrai URL se houver, senão remove conteúdo
-        s = Regex.Replace(s, @"<ref[^>]*>(.*?)</ref>", m => ExtractUrlOrText(m.Groups[1].Value) ?? "", RegexOptions.Singleline);
+        s = HtmlPatterns.RefTagCapture().Replace(s, m => ExtractUrlOrText(m.Groups[1].Value) ?? "");
 
         // remove marcação de itálico/negrito do MediaWiki: '', ''', '''''
-        s = Regex.Replace(s, @"'{2,5}", "");
+        s = TextCleanupPatterns.WikiQuoteMarkup().Replace(s, "");
 
         // entidades simples
         s = s.Replace("&mdash;", "—");
@@ -219,9 +205,9 @@ public static class TextHelper
         if (string.IsNullOrWhiteSpace(raw)) return raw ?? string.Empty;
 
         // 1) tenta capturar bullets do tipo "* algo", mesmo que tudo esteja em uma linha
-        var items = System.Text.RegularExpressions.Regex
+        var items = Regex
             .Matches(raw, @"\*\s*([^\*\r\n]+)")   // captura tudo após cada * até outro * ou quebra
-            .Cast<System.Text.RegularExpressions.Match>()
+            .Cast<Match>()
             .Select(m => m.Groups[1].Value.Trim())
             .Where(s => s.Length > 0)
             .ToList();
@@ -267,22 +253,22 @@ public static class TextHelper
             var candidate = l.Trim();
 
             // ignora se só tem nome em negrito
-            if (Regex.IsMatch(candidate, @"^'{2,}[^']+'{2,}$"))
+            if (TextCleanupPatterns.QuotedOnly().IsMatch(candidate))
                 continue;
             
             // ignora se só tem nome em negrito
-            if (Regex.IsMatch(candidate, @"\b(is a playable|can be obtained)\b", RegexOptions.IgnoreCase))
+            if (CharacterPatterns.PlayableOrObtained().IsMatch(candidate))
                 continue;
 
             // preferir frases com " is " ou " was "
-            if (Regex.IsMatch(candidate, @"\b(is|was)\b", RegexOptions.IgnoreCase))
+            if (CharacterPatterns.IsOrWas().IsMatch(candidate))
                 return OneLine(candidate);
         }
 
         // fallback: primeira linha não-vazia
         return lines.Count > 0 ? OneLine(lines[0]) : null;
 
-        static string OneLine(string s) => Regex.Replace(s, @"\s+", " ").Trim();
+        static string OneLine(string s) => TextCleanupPatterns.Whitespace().Replace(s, " ").Trim();
     }
 
 
@@ -291,7 +277,7 @@ public static class TextHelper
         if (string.IsNullOrWhiteSpace(raw)) return null;
 
         // tenta [http://url ...]
-        var m = Regex.Match(raw, @"https?://[^\s\]]+");
+        var m = LinkPatterns.Url().Match(raw);
         if (m.Success) return m.Value;
 
         // senão, retorna texto limpo
@@ -316,7 +302,7 @@ public static class TextHelper
     public static Dictionary<string, string> ParseTemplateFields(string templateContent, string headerName)
     {
         // remove cabeçalho "TemplateName"
-        var content = Regex.Replace(templateContent, @"^\s*" + Regex.Escape(headerName) + @"\b", "", RegexOptions.IgnoreCase);
+        var content = DynamicPatterns.GetTemplateHeaderRegex(headerName).Replace(templateContent, "");
 
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string? currentKey = null;
@@ -372,39 +358,39 @@ public static class TextHelper
         var s = v;
 
         // comentários HTML
-        s = HtmlCommentRegex.Replace(s, "");
+        s = HtmlPatterns.HtmlComment().Replace(s, "");
 
         // <ref>...</ref> → remove (ou poderia extrair URLs, se quiser)
-        s = RefTagRegex.Replace(s, "");
+        s = HtmlPatterns.RefTag().Replace(s, "");
 
         // <p> → quebra; outras tags → remove
-        s = ParagraphTagRegex.Replace(s, "\n\n");
-        s = BreakTagRegex.Replace(s, "\n");
-        s = HtmlTagRegex.Replace(s, "");
+        s = HtmlPatterns.ParagraphTag().Replace(s, "\n\n");
+        s = HtmlPatterns.BreakTag().Replace(s, "\n");
+        s = HtmlPatterns.HtmlTag().Replace(s, "");
 
         // [http url texto] → "texto" (ou "texto (url)" se preferir)
-        s = ExternalLinkRegex.Replace(s, "$2");
+        s = LinkPatterns.ExternalLink().Replace(s, "$2");
 
         // links wiki
-        s = WikiPipeLinkRegex.Replace(s, "$2"); // [[A|B]]→B
-        s = WikiLinkRegex.Replace(s, "$1");     // [[A]]→A
-        s = CategoryLinkRegex.Replace(s, "$1");
+        s = LinkPatterns.WikiPipeLink().Replace(s, "$2"); // [[A|B]]→B
+        s = LinkPatterns.WikiLink().Replace(s, "$1");     // [[A]]→A
+        s = LinkPatterns.CategoryLink().Replace(s, "$1");
 
         // templates COM pipe: {{x|Y}} → Y (melhor esforço)
-        s = TemplateWithPipeRegex.Replace(s, "$1");
+        s = TemplatePatterns.TemplateWithPipe().Replace(s, "$1");
 
         // templates SEM pipe: {{Cryo}} → Cryo ; {{sic|[[Akasha]]}} já caiu na regra com pipe acima
-        s = TemplateWithoutPipeRegex.Replace(s, "$1");
+        s = TemplatePatterns.TemplateWithoutPipe().Replace(s, "$1");
 
         // negrito/itálico de wiki
-        s = WikiQuoteMarkupRegex.Replace(s, "");
+        s = TextCleanupPatterns.WikiQuoteMarkup().Replace(s, "");
 
         // entidades comuns
         s = s.Replace("&mdash;", "—");
 
         // normaliza quebras múltiplas
-        s = TrailingHorizontalWhitespaceRegex.Replace(s, "\n");
-        s = MultipleNewLinesRegex.Replace(s, "\n\n");
+        s = TextCleanupPatterns.TrailingHorizontalWhitespace().Replace(s, "\n");
+        s = TextCleanupPatterns.MultipleNewLines().Replace(s, "\n\n");
 
         return s.Trim();
     }
@@ -412,9 +398,9 @@ public static class TextHelper
     public static string? ReplaceText(string? line)
     {
         if (string.IsNullOrWhiteSpace(line)) return null;
-        if (_replacements.Any(x => line.Contains(x.Key)))
+        if (Replacements.Any(x => line.Contains(x.Key)))
         {
-            KeyValuePair<string, string> replacement = _replacements.FirstOrDefault(x => line.Contains(x.Key));
+            KeyValuePair<string, string> replacement = Replacements.FirstOrDefault(x => line.Contains(x.Key));
             line = line.Replace(replacement.Key, replacement.Value);
         }
         return line;
@@ -427,7 +413,7 @@ public static class TextHelper
         
         // versão “inline”: não preserva parágrafos
         var t = CleanText(line);
-        t = Regex.Replace(t, @"\s+", " ").Trim();
+        t = TextCleanupPatterns.Whitespace().Replace(t, " ").Trim();
         return t;
     }
     
@@ -466,20 +452,16 @@ public static class TextHelper
     public static string? ExtractSection(string fullText, string heading)
     {
         // procura "== Heading ==" (varia número de "="; usamos \s* para tolerância)
-        var rx = new Regex(@"^=+\s*" + Regex.Escape(heading) + @"\s*=+\s*$",
-            RegexOptions.IgnoreCase | RegexOptions.Multiline);
-
-        var m = rx.Match(fullText);
+        var m = DynamicPatterns.GetSectionHeadingRegex(heading).Match(fullText);
         if (!m.Success) return null;
 
         int start = m.Index + m.Length;
         // até o próximo heading de mesmo nível (ou qualquer == ... ==)
-        var next = Regex.Match(fullText[start..], @"^=+\s*.+?\s*=+\s*$",
-            RegexOptions.Multiline);
+        var next = TextCleanupPatterns.AnyHeading().Match(fullText[start..]);
         string section = next.Success ? fullText.Substring(start, next.Index) : fullText[start..];
 
         // limpa wiki/HTML preservando parágrafos
-        var cleaned = TextHelper.CleanText(section);
+        var cleaned = CleanText(section);
         return string.IsNullOrWhiteSpace(cleaned) ? null : cleaned;
     }
 
@@ -493,7 +475,7 @@ public static class TextHelper
         if (string.IsNullOrWhiteSpace(v)) return null;
         // divide por vírgulas / quebras / <br> já devem ter sido normalizadas por CleanInline
         var list = v.Split(new[] { ',', ';', '/', '|' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => TextHelper.CleanInline(s))
+            .Select(s => CleanInline(s))
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -502,11 +484,72 @@ public static class TextHelper
 
     public static string? ExtractDescriptionTemplate(string text)
     {
-        var blk = TextHelper.ExtractTemplateBlock(text, "Description");
+        var blk = ExtractTemplateBlock(text, "Description");
         if (blk is null) return null;
-        var m = Regex.Match(blk, @"^\s*Description\s*\|\s*(.+)$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        return m.Success ? TextHelper.CleanInline(m.Groups[1].Value) : null;
+        var m = DescriptionPatterns.DescriptionTemplateBody().Match(blk);
+        return m.Success ? CleanInline(m.Groups[1].Value) : null;
     }
+
+    public static Match MatchDescriptionTemplate(string text) => DescriptionPatterns.DescriptionTemplate().Match(text);
+
+    public static string? ExtractGalleryContent(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var m = HtmlPatterns.GalleryRegex().Match(text);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    public static string? ExtractDescriptionSection(string text)
+    {
+        var m = DescriptionPatterns.DescriptionSection().Match(text);
+        if (!m.Success) return null;
+        var body = CleanText(m.Groups[1].Value.Trim());
+        return string.IsNullOrWhiteSpace(body) ? null : body;
+    }
+
+    public static string? ExtractChangeHistoryVersion(string text)
+    {
+        var m = CharacterPatterns.ChangeHistoryVersion().Match(text);
+        return m.Success ? CleanInline(m.Groups[1].Value) : null;
+    }
+
+    public static MatchCollection MatchQuoteTemplates(string text) => DialoguePatterns.QuoteTemplate().Matches(text);
+
+    public static MatchCollection MatchDialogueBlocks(string text) => DialoguePatterns.DialogueBlock().Matches(text);
+
+    public static string? ExtractDialogueBlockContent(string section)
+    {
+        var start = DialoguePatterns.DialogueStart().Match(section);
+        var end = DialoguePatterns.DialogueEnd().Match(section);
+        if (!start.Success || !end.Success || end.Index <= start.Index) return null;
+        return section.Substring(start.Index + start.Length, end.Index - (start.Index + start.Length)).Trim();
+    }
+
+    public static string RemoveAudioTemplates(string text) => DialoguePatterns.AudioTemplate().Replace(text, "");
+
+    public static List<string>? ExtractAudioFiles(string? text, out string? withoutAudio)
+    {
+        var files = new List<string?>();
+        withoutAudio = text;
+
+        if (string.IsNullOrEmpty(text)) return null;
+
+        withoutAudio = DialoguePatterns.AudioTemplate().Replace(text, m =>
+        {
+            var file = CleanInline(m.Groups[1].Value);
+            if (!string.IsNullOrWhiteSpace(file)) files.Add(file);
+            return "";
+        });
+
+        return files.Count > 0 ? files : null;
+    }
+
+    public static bool StartsWithDialogueIcon(string text) => DialoguePatterns.DialogueIconStart().IsMatch(text);
+
+    public static bool ContainsDialogueIcon(string text) => DialoguePatterns.DialogueIcon().IsMatch(text);
+
+    public static string RemoveDialogueIcons(string text) => DialoguePatterns.DialogueIcon().Replace(text, "");
+
     public static decimal? ToDecimal(string? s)
         => decimal.TryParse((s ?? "").Trim(), System.Globalization.NumberStyles.Any,
             System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : null;
@@ -524,7 +567,7 @@ public static class TextHelper
     public static string? ExtractFileFromCell(string cell)
     {
         // procura [[File:...]]
-        var m = Regex.Match(cell, @"\[\[\s*File:([^|\]]+)", RegexOptions.IgnoreCase);
+        var m = TableCellPatterns.FileCell().Match(cell);
         if (m.Success) return m.Groups[1].Value.Trim();
         return CleanCell(cell);
     }
@@ -534,38 +577,37 @@ public static class TextHelper
         var t = s;
 
         // <br> vira " - " pra juntar partes
-        t = Regex.Replace(t, @"<\s*br\s*/?>", " - ", RegexOptions.IgnoreCase);
+        t = TableCellPatterns.CellBreak().Replace(t, " - ");
 
         // remove <small>...</small>
-        t = Regex.Replace(t, @"<\s*small[^>]*>(.*?)</\s*small\s*>", "$1", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        t = HtmlPatterns.SmallTag().Replace(t, "$1");
 
         // remove itálico/bold wiki ''...''
-        t = Regex.Replace(t, @"''+", "");
+        t = TextCleanupPatterns.WikiApostropheMarkup().Replace(t, "");
 
         // tira refs
-        t = Regex.Replace(t, @"<ref[^>/]*/>|<ref[^>]*>.*?</ref>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        t = HtmlPatterns.RefTagOrSelfClosing().Replace(t, "");
 
         // desmarca link simples [[A|B]] / [[A]]
-        t = Regex.Replace(t, @"\[\[([^[\]|]+)\|([^[\]]+)\]\]", "$2");
-        t = Regex.Replace(t, @"\[\[([^[\]]+)\]\]", "$1");
+        t = TableCellPatterns.CellWikiPipeLink().Replace(t, "$2");
+        t = TableCellPatterns.CellWikiLink().Replace(t, "$1");
 
         // html entities comuns
         t = t.Replace("&mdash;", "—").Replace("&ndash;", "–");
 
-        return TextHelper.CleanInline(t);
+        return CleanInline(t);
     }
     
     public static int? TryInt(string? s) => int.TryParse((s ?? "").Trim(), out var n) ? n : null;
 
     public static string NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
-    public static string StripNowiki(string s) => string.IsNullOrEmpty(s) ? s : Regex.Replace(s, @"<\/?nowiki>", "", RegexOptions.IgnoreCase);
+    public static string StripNowiki(string s) => string.IsNullOrEmpty(s) ? s : HtmlPatterns.NoWikiTag().Replace(s, "");
 
     public static string ExtractTemplate(string name, string text)
     {
         // simples/non-greedy; funciona bem para esses infoboxes
-        var m = Regex.Match(text, @"\{\{\s*" + Regex.Escape(name) + @"\b(?<body>[\s\S]*?)\}\}",
-            RegexOptions.IgnoreCase);
+        var m = DynamicPatterns.GetTemplateRegex(name).Match(text);
         return m.Success ? m.Groups["body"].Value : null;
     }
 
@@ -575,8 +617,7 @@ public static class TextHelper
         if (string.IsNullOrEmpty(body)) return dict;
 
         // | key = value   (para; até próximo | ou fim de template)
-        foreach (Match m in Regex.Matches(body, @"\|\s*(?<k>[\w\-]+)\s*=\s*(?<v>.*?)(?=\n\||\n\}\}|\r\n\||\r\n\}\}|$)",
-                     RegexOptions.Singleline))
+        foreach (Match m in TemplatePatterns.TemplateParam().Matches(body))
         {
             var k = m.Groups["k"].Value.Trim();
             var v = m.Groups["v"].Value.Trim();
@@ -587,8 +628,7 @@ public static class TextHelper
     
     public static IEnumerable<string> ExtractTemplates(string name, string text)
     {
-        foreach (Match m in Regex.Matches(text, @"\{\{\s*" + Regex.Escape(name) + @"\b(?<body>[\s\S]*?)\}\}",
-                     RegexOptions.IgnoreCase))
+        foreach (Match m in DynamicPatterns.GetTemplateRegex(name).Matches(text))
             yield return m.Groups["body"].Value;
     }
 }

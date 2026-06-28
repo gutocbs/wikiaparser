@@ -1,11 +1,52 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Genshin.Wiki.Parser.Helpers;
 using Genshin.Wiki.Parser.Models.Faction;
 
 namespace Genshin.Wiki.Parser.Parsers.Faction;
 
-public static class FactionParser
+public static partial class FactionParser
 {
+    private static readonly ConcurrentDictionary<string, Regex> SectionRegexCache = new(StringComparer.OrdinalIgnoreCase);
+
+    [GeneratedRegex(@"^===\s*Members\s*===\s*(.+?)(?=^===|\Z)", RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex MembersSectionRegex();
+
+    [GeneratedRegex(@"\{\|(.+?)\|\}", RegexOptions.Singleline)]
+    private static partial Regex WikiTableRegex();
+
+    [GeneratedRegex(@"^\s*\|-\s*$", RegexOptions.Multiline)]
+    private static partial Regex TableRowSeparatorRegex();
+
+    [GeneratedRegex(@"^\s*!", RegexOptions.Multiline)]
+    private static partial Regex TableHeaderRowRegex();
+
+    [GeneratedRegex(@"\[\[\s*([^[\]|]+)(?:\|([^[\]]+))?\s*\]\]")]
+    private static partial Regex WikiLinkRegex();
+
+    [GeneratedRegex(@"^====\s*Former Members\s*====\s*(.+?)(?=^===|\Z)", RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex FormerMembersSectionRegex();
+
+    [GeneratedRegex(@"^(.*?)\s*\((.*?)\)\s*$")]
+    private static partial Regex ParenthesizedNoteRegex();
+
+    [GeneratedRegex(@"^===\s*Employees\s*===\s*(.+?)(?=^===|\Z)", RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex EmployeesSectionRegex();
+
+    [GeneratedRegex(@"^====\s*(.+?)\s*====\s*(.+?)(?=^====|\Z)", RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex EmployeeSubsectionRegex();
+
+    [GeneratedRegex(@"\{\{\s*column\s*\|\s*\d+\s*\|\s*(.+?)\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
+    private static partial Regex ColumnTemplateRegex();
+
+    [GeneratedRegex(@"^(.*?)\s+[—-]\s+(.*)$")]
+    private static partial Regex DashSeparatedRoleRegex();
+
+    private static Regex GetSectionRegex(string sectionName)
+        => SectionRegexCache.GetOrAdd(sectionName, static name =>
+            new Regex(@"^==\s*" + Regex.Escape(name) + @"\s*==\s*(.+?)(?=^\s*==|\Z)",
+                RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled));
+
     public static FactionDto? TryParse(string? wikitext, string? pageTitle)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return null;
@@ -42,10 +83,10 @@ public static class FactionParser
     {
         if (string.IsNullOrWhiteSpace(field)) return null;
         // tenta dentro de <gallery>
-        var m = Regex.Match(field, @"<gallery[^>]*>(.*?)</gallery>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        if (m.Success)
+        var content = TextHelper.ExtractGalleryContent(field);
+        if (content is not null)
         {
-            foreach (var line in m.Groups[1].Value.Split('\n'))
+            foreach (var line in content.Split('\n'))
             {
                 var raw = line.Trim();
                 if (string.IsNullOrWhiteSpace(raw)) continue;
@@ -62,8 +103,7 @@ public static class FactionParser
     private static List<FactionQuoteDto>? ExtractQuotes(string text)
     {
         var list = new List<FactionQuoteDto>();
-        var rx = new Regex(@"\{\{\s*Quote\s*\|\s*(.+?)\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        foreach (Match m in rx.Matches(text))
+        foreach (Match m in TextHelper.MatchQuoteTemplates(text))
         {
             var blob = m.Groups[1].Value;
             var parts = SplitTemplateParams(TextHelper.ReplaceText(blob) ?? blob);
@@ -103,8 +143,7 @@ public static class FactionParser
     // ---------- Sections ----------
     private static string? ExtractSection(string text, string sectionName)
     {
-        var m = Regex.Match(text, @"^==\s*" + Regex.Escape(sectionName) + @"\s*==\s*(.+?)(?=^\s*==|\Z)",
-                            RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var m = GetSectionRegex(sectionName).Match(text);
         if (!m.Success) return null;
         var body = TextHelper.CleanText(m.Groups[1].Value);
         return string.IsNullOrWhiteSpace(body) ? null : body;
@@ -114,22 +153,20 @@ public static class FactionParser
     private static List<FactionMemberDto>? ParseMembersTable(string text)
     {
         // pega a seção "===Members===" e o primeiro {|
-        var secM = Regex.Match(text, @"^===\s*Members\s*===\s*(.+?)(?=^===|\Z)",
-                               RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var secM = MembersSectionRegex().Match(text);
         if (!secM.Success) return null;
 
         var sec = secM.Groups[1].Value;
-        var tbl = Regex.Match(sec, @"\{\|(.+?)\|\}", RegexOptions.Singleline);
+        var tbl = WikiTableRegex().Match(sec);
         if (!tbl.Success) return null;
 
-        var rows = Regex.Split(tbl.Groups[1].Value.Trim(), @"^\s*\|-\s*$",
-                               RegexOptions.Multiline).ToList();
+        var rows = TableRowSeparatorRegex().Split(tbl.Groups[1].Value.Trim()).ToList();
 
         var members = new List<FactionMemberDto>();
         foreach (var row in rows)
         {
             // pula cabeçalho (linhas começando com "!")
-            if (Regex.IsMatch(row, @"^\s*!", RegexOptions.Multiline)) continue;
+            if (TableHeaderRowRegex().IsMatch(row)) continue;
 
             // coleta células que começam com "|"
             var cells = new List<string>();
@@ -164,7 +201,7 @@ public static class FactionParser
     private static (string? display, string? link) ExtractLink(string cell)
     {
         // [[Target|Display]] ou [[Display]]
-        var m = Regex.Match(cell, @"\[\[\s*([^[\]|]+)(?:\|([^[\]]+))?\s*\]\]");
+        var m = WikiLinkRegex().Match(cell);
         if (m.Success)
         {
             var target = m.Groups[1].Value.Trim();
@@ -177,8 +214,7 @@ public static class FactionParser
     // ---------- Former Members (lista com '*') ----------
     private static List<FactionFormerMemberDto>? ParseFormerMembers(string text)
     {
-        var sec = Regex.Match(text, @"^====\s*Former Members\s*====\s*(.+?)(?=^===|\Z)",
-                              RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var sec = FormerMembersSectionRegex().Match(text);
         if (!sec.Success) return null;
 
         var body = sec.Groups[1].Value;
@@ -195,7 +231,7 @@ public static class FactionParser
             string? name = clean;
             string? note = null;
 
-            var mParen = Regex.Match(clean, @"^(.*?)\s*\((.*?)\)\s*$");
+            var mParen = ParenthesizedNoteRegex().Match(clean);
             if (mParen.Success)
             {
                 name = mParen.Groups[1].Value.Trim();
@@ -215,17 +251,14 @@ public static class FactionParser
     // ---------- Employees agrupados por subheading (ex.: Wangshu Inn) ----------
     private static Dictionary<string, List<FactionEmployeeDto>>? ParseEmployees(string text)
     {
-        var sec = Regex.Match(text, @"^===\s*Employees\s*===\s*(.+?)(?=^===|\Z)",
-                              RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var sec = EmployeesSectionRegex().Match(text);
         if (!sec.Success) return null;
 
         var body = sec.Groups[1].Value;
         var dict = new Dictionary<string, List<FactionEmployeeDto>>(StringComparer.OrdinalIgnoreCase);
 
         // sub-seções "====Name====" (ex.: Wangshu Inn) + o bloco até o próximo ==== ou fim
-        var rxSub = new Regex(@"^====\s*(.+?)\s*====\s*(.+?)(?=^====|\Z)",
-                              RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-        var matches = rxSub.Matches(body);
+        var matches = EmployeeSubsectionRegex().Matches(body);
 
         if (matches.Count == 0)
         {
@@ -251,7 +284,7 @@ public static class FactionParser
     private static List<FactionEmployeeDto> ParseEmployeeBullets(string body)
     {
         // Se vier em {{column|2| ... }}, extraímos o conteúdo
-        var col = Regex.Match(body, @"\{\{\s*column\s*\|\s*\d+\s*\|\s*(.+?)\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        var col = ColumnTemplateRegex().Match(body);
         if (col.Success) body = col.Groups[1].Value;
 
         var list = new List<FactionEmployeeDto>();
@@ -265,7 +298,7 @@ public static class FactionParser
             string? name = clean;
             string? role = null;
 
-            var mDash = Regex.Match(clean, @"^(.*?)\s+[—-]\s+(.*)$");
+            var mDash = DashSeparatedRoleRegex().Match(clean);
             if (mDash.Success)
             {
                 name = mDash.Groups[1].Value.Trim();

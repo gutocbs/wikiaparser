@@ -5,8 +5,11 @@ using Genshin.Wiki.Parser.Models.Quest;
 
 namespace Genshin.Wiki.Parser.Parsers.Character;
 
-public static class NpcParser
+public static partial class NpcParser
 {
+    [GeneratedRegex(@"^'''\s*(?<sp>[^:'\n]+?)\s*:\s*'''\s*(?<tx>.*)$")]
+    private static partial Regex DialogueSpeakerRegex();
+
     private static readonly HashSet<string> FamilyKeys = new(StringComparer.OrdinalIgnoreCase)
         { "father", "sibling", "mother", "spouse", "child", "relative" };
     
@@ -90,22 +93,20 @@ public static class NpcParser
         if (string.IsNullOrWhiteSpace(wikiText)) return result;
 
         // Pega todos os blocos {{Dialogue Start}} ... {{Dialogue End}}
-        var blockRx = new Regex(@"\{\{\s*Dialogue\s+Start\s*\}\}(?<body>[\s\S]*?)\{\{\s*Dialogue\s+End\s*\}\}",
-                                RegexOptions.IgnoreCase);
-        foreach (Match blk in blockRx.Matches(wikiText))
+        foreach (Match blk in TextHelper.MatchDialogueBlocks(wikiText))
         {
             var body = blk.Groups["body"].Value;
-            var lines = body.Split('\n');
 
             var section = new DialogueSection(); // recomeça a cada contexto
-            foreach (var raw in lines)
+            using var reader = new StringReader(body);
+            string? raw;
+            while ((raw = reader.ReadLine()) != null)
             {
                 var line = raw.TrimEnd();
                 if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----")) continue;
 
                 // Contexto ;( ... )
-                var mCtx = Regex.Match(line, @"^\s*;\s*\((?<c>.+?)\)\s*$");
-                if (mCtx.Success)
+                if (TryExtractContext(line, out var context))
                 {
                     // fecha seção anterior
                     if (!string.IsNullOrWhiteSpace(section.Context) || section.Lines.Count > 0)
@@ -113,22 +114,19 @@ public static class NpcParser
                         result.Add(section);
                         section = new DialogueSection();
                     }
-                    section.Context = TextHelper.CleanText(mCtx.Groups["c"].Value);
+                    section.Context = TextHelper.CleanText(context);
                     continue;
                 }
 
                 // Linhas iniciadas por ":" (uma ou mais) = diálogo/choice
-                var mLead = Regex.Match(line, @"^\s*(?<colons>:+)\s*(?<rest>.*)$");
-                if (!mLead.Success) continue;
-
-                var rest  = mLead.Groups["rest"].Value.Trim();
+                if (!TryExtractDialogueRest(line, out var rest)) continue;
 
                 // captura audios {{A|...}}
-                Regex.Matches(rest, @"\{\{\s*A\s*\|\s*([^}]+)\}\}", RegexOptions.IgnoreCase).Select(m => m.Groups[1].Value.Trim()).ToList();
-                var noAudio = Regex.Replace(rest, @"\{\{\s*A\s*\|[^}]+\}\}", "", RegexOptions.IgnoreCase).Trim();
+                TextHelper.ExtractAudioFiles(rest, out var withoutAudio);
+                var noAudio = withoutAudio?.Trim() ?? "";
 
                 // é choice? começa com {{DIcon}}
-                var isChoice = Regex.IsMatch(noAudio, @"^\{\{\s*DIcon", RegexOptions.IgnoreCase);
+                var isChoice = TextHelper.StartsWithDialogueIcon(noAudio);
                 if (isChoice)
                 {
                     var txt = TextHelper.CleanText(noAudio);
@@ -142,10 +140,7 @@ public static class NpcParser
                 }
 
                 // fala do tipo '''Speaker:''' Texto
-                var mTalk = Regex.Match(noAudio, @"^'''\s*(?<sp>[^:'\n]+?)\s*:\s*'''\s*(?<tx>.*)$");
-                if (!mTalk.Success)
-                    mTalk = Regex.Match(noAudio, @"^'''\s*(?<sp>[^:'\n]+?)\s*:\s*'''\s*$"); // casos com texto vazio
-
+                var mTalk = DialogueSpeakerRegex().Match(noAudio);
                 if (mTalk.Success)
                 {
                     var sp = TextHelper.CleanText(mTalk.Groups["sp"].Value);
@@ -174,5 +169,31 @@ public static class NpcParser
         }
 
         return result;
+    }
+
+    private static bool TryExtractContext(string line, out string context)
+    {
+        context = string.Empty;
+        var trimmed = line.Trim();
+        if (!trimmed.StartsWith(";", StringComparison.Ordinal)) return false;
+
+        var body = trimmed[1..].TrimStart();
+        if (body.Length <= 2 || body[0] != '(' || body[^1] != ')') return false;
+
+        context = body[1..^1];
+        return context.Length > 0;
+    }
+
+    private static bool TryExtractDialogueRest(string line, out string rest)
+    {
+        rest = string.Empty;
+        var span = line.AsSpan().TrimStart();
+        if (span.IsEmpty || span[0] != ':') return false;
+
+        var i = 1;
+        while (i < span.Length && span[i] == ':') i++;
+
+        rest = span[i..].Trim().ToString();
+        return true;
     }
 }

@@ -4,8 +4,20 @@ using Genshin.Wiki.Parser.Models.Location;
 
 namespace Genshin.Wiki.Parser.Parsers.Location;
 
-public static class LocationParser
+public static partial class LocationParser
 {
+    [GeneratedRegex(@"(?ms)^\s*==\s*NPCs\s*==\s*(?<blk>.+?)(?:^\s*==|$)")]
+    private static partial Regex NpcsSectionRegex();
+
+    [GeneratedRegex(@"(?ms)^\s*==\s*Descriptions\s*==\s*(?<blk>.+?)(?:^\s*==|$)")]
+    private static partial Regex DescriptionsSectionRegex();
+
+    [GeneratedRegex(@"\{\{\s*Description\s*\|\s*(?<txt>[^|}]+?)(?:\|\s*(?<src>[^|}]+))?\s*\}\}", RegexOptions.IgnoreCase)]
+    private static partial Regex LocationDescriptionTemplateRegex();
+
+    [GeneratedRegex(@"\{\{\s*If\s*Self\s*\|\s*([^|\}]+)\|\s*([^|\}]+)\|\s*([^|\}]+)\s*\}\}", RegexOptions.IgnoreCase)]
+    private static partial Regex IfSelfTemplateRegex();
+
     // call principal
     public static LocationDto? TryParse(string wikiText, string pageTitle)
     {
@@ -58,7 +70,7 @@ public static class LocationParser
     // ---- helpers ----
     private static IEnumerable<string> ExtractNpcNames(string text)
     {
-        var m = Regex.Match(text, @"(?ms)^\s*==\s*NPCs\s*==\s*(?<blk>.+?)(?:^\s*==|$)");
+        var m = NpcsSectionRegex().Match(text);
         if (!m.Success) yield break;
 
         var blk = m.Groups["blk"].Value;
@@ -73,13 +85,11 @@ public static class LocationParser
 
     private static IEnumerable<LocationDescriptionDto> ExtractDescriptionsSection(string text)
     {
-        var m = Regex.Match(text, @"(?ms)^\s*==\s*Descriptions\s*==\s*(?<blk>.+?)(?:^\s*==|$)");
+        var m = DescriptionsSectionRegex().Match(text);
         if (!m.Success) yield break;
 
         var blk = m.Groups["blk"].Value;
-        foreach (Match d in Regex.Matches(blk,
-                 @"\{\{\s*Description\s*\|\s*(?<txt>[^|}]+?)(?:\|\s*(?<src>[^|}]+))?\s*\}\}",
-                 RegexOptions.IgnoreCase))
+        foreach (Match d in LocationDescriptionTemplateRegex().Matches(blk))
         {
             var txt = TextHelper.CleanText(d.Groups["txt"].Value);
             var src = TextHelper.CleanText(d.Groups["src"].Value);
@@ -90,15 +100,13 @@ public static class LocationParser
 
     private static string ResolveIfSelf(string raw, string pageTitle)
     {
-        return Regex.Replace(raw,
-            @"\{\{\s*If\s*Self\s*\|\s*([^|\}]+)\|\s*([^|\}]+)\|\s*([^|\}]+)\s*\}\}",
+        return IfSelfTemplateRegex().Replace(raw,
             m =>
             {
                 var page = TextHelper.CleanText(m.Groups[1].Value);
                 var ifYes = TextHelper.CleanText(m.Groups[2].Value);
                 var ifNo  = TextHelper.CleanText(m.Groups[3].Value);
                 return page.Equals(pageTitle, StringComparison.OrdinalIgnoreCase) ? ifYes : ifNo;
-            },
-            RegexOptions.IgnoreCase);
+            });
     }
 }
