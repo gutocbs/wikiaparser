@@ -1,0 +1,81 @@
+{
+  "parsers": [
+    {
+      "key": "playableCharacters",
+      "objectType": "PlayableCharacter",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 50
+    },
+    {
+      "key": "npcs",
+      "objectType": "NonPlayableCharacter",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 250
+    },
+    {
+      "key": "quest",
+      "objectType": "Quest",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 100
+    },
+    {
+      "key": "weapons",
+      "objectType": "Weapon",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    },
+    {
+      "key": "artifacts",
+      "objectType": "Artifact",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    },
+    {
+      "key": "enemy",
+      "objectType": "Enemy",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    },
+    {
+      "key": "factions",
+      "objectType": "Faction",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    },
+    {
+      "key": "books",
+      "objectType": "Book",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    },
+    {
+      "key": "location",
+      "objectType": "Location",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    },
+    {
+      "key": "item",
+      "objectType": "Item",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    },
+    {
+      "key": "furnishing",
+      "objectType": "Furnishing",
+      "shouldShard": true,
+      "shardMode": "Count",
+      "maxShardCount": 0
+    }
+  ]
+}

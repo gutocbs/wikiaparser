@@ -1,0 +1,7 @@
+{
+  "defaults": {
+    "inputFile": "gensinimpact_pages_current.xml",
+    "outputPath": "files",
+    "ignoreListPath": "IgnoreList.json"
+  }
+}

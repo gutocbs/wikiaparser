@@ -1,0 +1,11 @@
+{
+  "defaultFileExtension": "txt",
+  "shardedArraySink": {
+    "maxBytesPerFile": 209715200,
+    "maxWordsPerFile": 500000,
+    "maxFiles": 50,
+    "oversizeItemBehavior": "AllowSingleFile",
+    "writeIndented": false,
+    "ignoreNullValues": true
+  }
+}
