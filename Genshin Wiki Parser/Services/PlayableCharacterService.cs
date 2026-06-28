@@ -13,7 +13,7 @@ public class PlayableCharacterService
     private readonly Dictionary<string, NamecardDto> _namecardByKey = new(StringComparer.OrdinalIgnoreCase);
 
     private static bool ContainsCharacterTabs(string wikitext)
-        => wikitext.IndexOf("CharacterTabs", StringComparison.OrdinalIgnoreCase) >= 0;
+        => wikitext.IndexOf("Character Tabs", StringComparison.OrdinalIgnoreCase) >= 0;
     
     public bool Set(Page page, string wikiText, string key)
     {
