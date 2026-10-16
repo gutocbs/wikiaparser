@@ -103,7 +103,7 @@ public static partial class NpcParser
             while ((raw = reader.ReadLine()) != null)
             {
                 string line = raw.TrimEnd();
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----")) continue;
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----", StringComparison.Ordinal)) continue;
 
                 // Contexto ;( ... )
                 if (TryExtractContext(line, out string context))

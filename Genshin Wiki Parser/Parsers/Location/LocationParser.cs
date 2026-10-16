@@ -76,7 +76,7 @@ public static partial class LocationParser
         string blk = m.Groups["blk"].Value;
         foreach (string line in blk.Split('\n'))
         {
-            if (!line.TrimStart().StartsWith("*")) continue;
+            if (!line.TrimStart().StartsWith("*", StringComparison.Ordinal)) continue;
             string name = TextHelper.CleanText(line.Replace("*", "").Trim());
             if (!string.IsNullOrWhiteSpace(name))
                 yield return name;

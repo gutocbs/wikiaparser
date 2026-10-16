@@ -171,7 +171,7 @@ public static partial class FactionParser
             foreach (string line in row.Split('\n'))
             {
                 string ln = line.TrimStart();
-                if (ln.StartsWith("|"))
+                if (ln.StartsWith("|", StringComparison.Ordinal))
                 {
                     cells.Add(ln.Substring(1).Trim());
                 }
@@ -221,7 +221,7 @@ public static partial class FactionParser
         foreach (string line in body.Split('\n'))
         {
             string ln = line.Trim();
-            if (!ln.StartsWith("*")) continue;
+            if (!ln.StartsWith("*", StringComparison.Ordinal)) continue;
 
             // exemplo: * [[Yun Hui]]<ref>...</ref><ref group="Note">...</ref> (title unknown)
             string clean = TextHelper.CleanCell(ln.TrimStart('*').Trim());
@@ -289,7 +289,7 @@ public static partial class FactionParser
         foreach (string raw in body.Split('\n'))
         {
             string line = raw.Trim();
-            if (!line.StartsWith("*")) continue;
+            if (!line.StartsWith("*", StringComparison.Ordinal)) continue;
 
             string clean = TextHelper.CleanCell(line.TrimStart('*').Trim());
             // normalmente "Nome — Papel" (— ou -)

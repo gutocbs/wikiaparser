@@ -81,7 +81,7 @@ public static partial class QuestParser
             {
                 string line = raw.TrimEnd();
 
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----")) continue;
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("----", StringComparison.Ordinal)) continue;
 
                 // Contexto de cena: ;( ... )
                 if (TryExtractContext(line, out string context))

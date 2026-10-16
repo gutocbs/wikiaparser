@@ -80,7 +80,7 @@ public static partial class TextHelper
                 continue;
             }
 
-            if (line.StartsWith(WikiSyntax.FieldPrefix))
+            if (line.StartsWith(WikiSyntax.FieldPrefix, StringComparison.Ordinal))
             {
                 // finalize o campo anterior
                 if (currentKey != null)
@@ -135,7 +135,7 @@ public static partial class TextHelper
             if (inGallery && l.IndexOf("</gallery>", StringComparison.OrdinalIgnoreCase) >= 0)
                 break;
             // também paramos se encontrar claramente o começo de outro campo
-            if (!inGallery && l.StartsWith(WikiSyntax.FieldPrefix)) break;
+            if (!inGallery && l.StartsWith(WikiSyntax.FieldPrefix, StringComparison.Ordinal)) break;
         }
         // no retorno normal, nada a fazer — optamos por não salvar imagem no DTO
     }
@@ -307,7 +307,7 @@ public static partial class TextHelper
         string? line;
         while ((line = reader.ReadLine()) != null)
         {
-            if (line.TrimStart().StartsWith(WikiSyntax.FieldPrefix))
+            if (line.TrimStart().StartsWith(WikiSyntax.FieldPrefix, StringComparison.Ordinal))
             {
                 // fecha o campo anterior
                 if (currentKey != null)
@@ -440,7 +440,7 @@ public static partial class TextHelper
     public static string? StripParens(string? s)
     {
         string t = s.Trim();
-        if (t.StartsWith("(") && t.EndsWith(")") && t.Length > 1)
+        if (t.StartsWith("(", StringComparison.Ordinal) && t.EndsWith(")", StringComparison.Ordinal) && t.Length > 1)
             return t[1..^1].Trim();
         return t;
     }
