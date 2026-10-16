@@ -20,30 +20,27 @@ public static partial class TextHelper
 
         int i = idx;
         int depth = 0;
-        StringBuilder sb = new StringBuilder();
 
         while (i < text.Length)
         {
             if (i + 1 < text.Length && text[i] == '{' && text[i + 1] == '{')
             {
                 depth++;
-                sb.Append(WikiSyntax.TemplateOpen);
                 i += 2;
                 continue;
             }
             if (i + 1 < text.Length && text[i] == '}' && text[i + 1] == '}')
             {
                 depth--;
-                sb.Append(WikiSyntax.TemplateClose);
                 i += 2;
                 if (depth == 0) break;
                 continue;
             }
-            sb.Append(text[i]);
             i++;
         }
 
-        string block = sb.ToString();
+        // o trecho percorrido é exatamente o bloco (antes era copiado char a char num StringBuilder)
+        string block = text.Substring(idx, i - idx);
         // Tira a casca "{{" + "}}" externa
         if (block.StartsWith(WikiSyntax.TemplateOpen, StringComparison.Ordinal) &&
             block.EndsWith(WikiSyntax.TemplateClose, StringComparison.Ordinal) &&
@@ -129,16 +126,12 @@ public static partial class TextHelper
     public static void ConsumeImageBlock(StringReader reader, ref string line)
     {
         // Já estamos numa linha que começa com |image
-        // Se houver <gallery>, consome até </gallery>
-        StringBuilder sb = new StringBuilder();
-        sb.AppendLine(line);
-
+        // Se houver <gallery>, consome até </gallery> (as linhas são descartadas)
         bool inGallery = line.Contains(WikiSyntax.GalleryOpen, StringComparison.OrdinalIgnoreCase);
         while (true)
         {
             string? l = reader.ReadLine();
             if (l == null) break;
-            sb.AppendLine(l);
             if (inGallery && l.IndexOf("</gallery>", StringComparison.OrdinalIgnoreCase) >= 0)
                 break;
             // também paramos se encontrar claramente o começo de outro campo

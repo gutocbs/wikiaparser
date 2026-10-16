@@ -58,8 +58,6 @@ public static partial class FactionParser
 
         Dictionary<string, string> fields = TextHelper.ParseTemplateFields(box, WikiTemplates.FactionInfobox);
 
-        if(wikitext.Contains(WikiSpecialCases.KhaenriahAbyssOrderSkipText))
-            Console.WriteLine("sdadd");
         FactionDto dto = new FactionDto
         {
             Title  = TextHelper.CleanInline(pageTitle ?? ""),

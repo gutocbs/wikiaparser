@@ -26,7 +26,6 @@ public static partial class ArtifactParser
         // Campos básicos do infobox
         string? set   = TextHelper.CleanInline(TextHelper.Get(f, ArtifactFieldNames.Set));
         string? piece = TextHelper.CleanInline(TextHelper.Get(f, ArtifactFieldNames.Piece));
-        ParseImageField(TextHelper.Get(f, CommonFieldNames.Image));
 
         // Descrições
         string? shortDesc = ExtractDescriptionTemplate(wikitext);
@@ -49,43 +48,6 @@ public static partial class ArtifactParser
     }
 
     // ----------------- helpers específicos -----------------
-
-    private static ArtifactImageDto? ParseImageField(string? imageField)
-    {
-        if (string.IsNullOrWhiteSpace(imageField)) return null;
-
-        // pode vir como "<gallery> ... </gallery>" ou só "File.png"
-        string? content = TextHelper.ExtractGalleryContent(imageField);
-        if (content is null)
-        {
-            string? single = TextHelper.CleanInline(imageField);
-            if (string.IsNullOrWhiteSpace(single)) return null;
-            return new ArtifactImageDto { Primary = single };
-        }
-
-        string? primary = null;
-        List<string?> extras = new List<string?>();
-
-        foreach (string rawLine in content.Split('\n'))
-        {
-            string raw = rawLine.Trim();
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-
-            string[] parts = raw.Split('|', 2);
-            string? file  = TextHelper.CleanInline(parts[0]);
-            if (string.IsNullOrWhiteSpace(file)) continue;
-
-            if (primary is null) primary = file;
-            else extras.Add(file);
-        }
-
-        if (primary is null && extras.Count == 0) return null;
-        return new ArtifactImageDto
-        {
-            Primary = primary,
-            Extras  = extras.Count > 0 ? extras : null
-        };
-    }
 
     private static string? ExtractDescriptionTemplate(string text)
     {

@@ -32,9 +32,6 @@ public static partial class WeaponParser
             return s;
         }
 
-        // --- imagens do <gallery> dentro do campo image ---
-        ParseWeaponImages(TextHelper.Get(f, CommonFieldNames.Image));
-
         // --- passive vars: eff_rankN_varM ---
         Dictionary<string, string[]>? passiveVars = ParsePassiveVars(f);
 
@@ -77,37 +74,6 @@ public static partial class WeaponParser
     }
 
     // ---------- helpers específicos deste parser ----------
-
-    private static WeaponImagesDto? ParseWeaponImages(string? imageField)
-    {
-        if (string.IsNullOrWhiteSpace(imageField)) return null;
-
-        string content = imageField;
-        content = TextHelper.ExtractGalleryContent(imageField) ?? content;
-
-        string? baseImg = null, asc2 = null;
-        List<string?> extras = new List<string?>();
-
-        foreach (string rawLine in content.Split('\n'))
-        {
-            string raw = rawLine.Trim();
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-
-            string[] parts = raw.Split('|', 2);
-            string? file  = TextHelper.CleanInline(parts[0]);
-            string? label = parts.Length > 1 ? TextHelper.CleanInline(parts[1]) : null;
-
-            if (string.IsNullOrWhiteSpace(file)) continue;
-            string lab = (label ?? "").ToLowerInvariant();
-
-            if (lab.Contains("base") && baseImg is null) baseImg = file;
-            else if (lab.Contains("2nd") && asc2 is null) asc2 = file;
-            else extras.Add(string.IsNullOrWhiteSpace(label) ? file : $"{file} ({label})");
-        }
-
-        if (baseImg is null && asc2 is null && extras.Count == 0) return null;
-        return new WeaponImagesDto { Base = baseImg, Ascension2 = asc2, Extras = extras.Count > 0 ? extras : null };
-    }
 
     private static Dictionary<string, string[]>? ParsePassiveVars(Dictionary<string, string?> fields)
     {
