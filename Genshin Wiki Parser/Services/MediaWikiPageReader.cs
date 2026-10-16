@@ -39,9 +39,16 @@ public static class MediaWikiPageReader
             }
         };
 
-        while (reader.Read())
+        // ReadElementContentAsString já avança o reader para o nó seguinte; por isso esses casos usam
+        // "continue" sem chamar Read() — senão um elemento colado ao anterior (sem espaço) seria pulado.
+        reader.Read();
+        while (!reader.EOF)
         {
-            if (reader.NodeType != XmlNodeType.Element) continue;
+            if (reader.NodeType != XmlNodeType.Element)
+            {
+                reader.Read();
+                continue;
+            }
 
             switch (reader.LocalName)
             {
@@ -52,10 +59,10 @@ public static class MediaWikiPageReader
                         return null;
                     }
 
-                    break;
+                    continue;
                 case "id" when page.id is null:
                     page.id = reader.ReadElementContentAsString();
-                    break;
+                    continue;
                 case "revision":
                     using (var revisionReader = reader.ReadSubtree())
                     {
@@ -64,6 +71,8 @@ public static class MediaWikiPageReader
 
                     break;
             }
+
+            reader.Read();
         }
 
         return string.IsNullOrWhiteSpace(page.title) ? null : page;

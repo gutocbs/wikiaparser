@@ -124,6 +124,15 @@ public class MediaWikiPageReaderTests
     }
 
     [Test]
+    public void Should_ReadRevision_When_ElementsHaveNoWhitespaceBetweenThem()
+    {
+        // XML válido sem quebras de linha entre os elementos (dump "minificado").
+        List<Page> pages = Read("<page><title>Compact</title><revision><text>abc</text></revision></page>");
+
+        Assert.That(pages.Single().revision.text.content, Is.EqualTo("abc"));
+    }
+
+    [Test]
     public void Should_ReadAllFixturePages_When_ReadingMiniDump()
     {
         List<Page> pages = MediaWikiPageReader.ReadPages(TestPaths.Fixture("mini-dump.xml")).ToList();
