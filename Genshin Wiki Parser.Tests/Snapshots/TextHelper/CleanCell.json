@@ -1,0 +1,98 @@
+[
+  {
+    "Input": null,
+    "Output": null
+  },
+  {
+    "Input": "",
+    "Output": null
+  },
+  {
+    "Input": "   ",
+    "Output": null
+  },
+  {
+    "Input": "plain text",
+    "Output": "plain text"
+  },
+  {
+    "Input": "[[Target|Display]] and [[Simple]]",
+    "Output": "Display and Simple"
+  },
+  {
+    "Input": "{{Cryo}} and {{Color|Pyro}}",
+    "Output": "Cryo and Pyro"
+  },
+  {
+    "Input": "nested {{sic|[[Akasha]]}}",
+    "Output": "nested Akasha"
+  },
+  {
+    "Input": "deep {{A|{{B|c}}}} nesting",
+    "Output": "deep {{A|c}} nesting"
+  },
+  {
+    "Input": "\u0027\u0027\u0027bold\u0027\u0027\u0027 \u0027\u0027italic\u0027\u0027 \u0027\u0027\u0027\u0027\u0027both\u0027\u0027\u0027\u0027\u0027",
+    "Output": "bold italic both"
+  },
+  {
+    "Input": "a\u003C!-- hidden --\u003Eb\u003C!-- multi\nline --\u003Ec",
+    "Output": "abc"
+  },
+  {
+    "Input": "text\u003Cref\u003Esource\u003C/ref\u003E more \u003Cref name=\u0022x\u0022\u003Ehttp://example.org/ref\u003C/ref\u003E end",
+    "Output": "text more end"
+  },
+  {
+    "Input": "self closing \u003Cref name=\u0022x\u0022 /\u003E ref",
+    "Output": "self closing ref"
+  },
+  {
+    "Input": "line\u003Cbr\u003Ebreak\u003Cbr/\u003Eagain\u003Cbr /\u003Eend",
+    "Output": "line - break - again - end"
+  },
+  {
+    "Input": "\u003Cp\u003Epara one\u003C/p\u003E\u003Cp\u003Epara two\u003C/p\u003E",
+    "Output": "para one para two"
+  },
+  {
+    "Input": "\u003Cspan class=\u0022x\u0022\u003Etag\u003C/span\u003E removed",
+    "Output": "tag removed"
+  },
+  {
+    "Input": "[http://example.org Link text] and [https://example.org/b Other]",
+    "Output": "Link text and Other"
+  },
+  {
+    "Input": "[:Category:Foo]",
+    "Output": "Foo"
+  },
+  {
+    "Input": "a \u0026mdash; b \u0026ndash; c",
+    "Output": "a \u2014 b \u2013 c"
+  },
+  {
+    "Input": "a  \n\n\n\nb   \nc",
+    "Output": "a b c"
+  },
+  {
+    "Input": "* bullet one\n* bullet two\n  *  bullet three",
+    "Output": "* bullet one * bullet two * bullet three"
+  },
+  {
+    "Input": "Cataclysm|destruction",
+    "Output": "Cataclysm|destruction"
+  },
+  {
+    "Input": "\u003Csmall\u003Etiny\u003C/small\u003E text",
+    "Output": "tiny text"
+  },
+  {
+    "Input": "Character Infobox leftover",
+    "Output": "Character Infobox leftover"
+  },
+  {
+    "Input": "mixed {{Color|Anemo|[[Link]]}} \u0027\u0027\u0027x\u0027\u0027\u0027 \u003Cbr\u003E [[A|B]]",
+    "Output": "mixed Anemo|Link x - B"
+  }
+]

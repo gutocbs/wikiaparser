@@ -1,0 +1,11 @@
+artifacts_01.txt
+books_01.txt
+enemy_01.txt
+factions_01.txt
+furnishing_01.txt
+item_01.txt
+location_01.txt
+npcs_01.txt
+playableCharacters_01.txt
+quest_01.txt
+weapons_01.txt

@@ -1,0 +1,42 @@
+[
+  {
+    "Text": "{{Weapon Infobox\n|id = 1\n}}",
+    "Name": "Weapon Infobox",
+    "Output": "Weapon Infobox\n|id = 1"
+  },
+  {
+    "Text": "before {{ weapon infobox |a=1}} after",
+    "Name": "Weapon Infobox",
+    "Output": "weapon infobox |a=1"
+  },
+  {
+    "Text": "{{Weapon Infobox\n|a = {{Color|x}}\n|b = {{A|{{B}}}}\n}} tail {{Other}}",
+    "Name": "Weapon Infobox",
+    "Output": "Weapon Infobox\n|a = {{Color|x}}\n|b = {{A|{{B}}}}"
+  },
+  {
+    "Text": "{{Weapon InfoboxExtra|a=1}}",
+    "Name": "Weapon Infobox",
+    "Output": null
+  },
+  {
+    "Text": "no template here",
+    "Name": "Weapon Infobox",
+    "Output": null
+  },
+  {
+    "Text": "{{Weapon Infobox\n|unbalanced = {{x}}",
+    "Name": "Weapon Infobox",
+    "Output": "Weapon Infobox\n|unbalanced = {{x"
+  },
+  {
+    "Text": "{{Character Infobox|a=1}}{{Character Infobox|a=2}}",
+    "Name": "Character Infobox",
+    "Output": "Character Infobox|a=1"
+  },
+  {
+    "Text": "{{VO/Story\n|vo_01_01_tx = hi\n}}",
+    "Name": "VO/Story",
+    "Output": "VO/Story\n|vo_01_01_tx = hi"
+  }
+]

@@ -57,3 +57,6 @@ nunit-*.xml
 Genshin Wiki Parser/Folder.DotSettings.user
 Genshin Wiki Parser/bin.lnk
 /Genshin Wiki Parser/.idea
+
+# Snapshots dos characterization tests (saída do parser em .txt) precisam ser versionados
+!/Genshin Wiki Parser.Tests/Snapshots/**/*.txt

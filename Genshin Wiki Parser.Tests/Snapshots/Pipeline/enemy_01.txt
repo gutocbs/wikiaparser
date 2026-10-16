@@ -1,0 +1,1 @@
+[{"Name":"Hilichurl","Type":"Common Enemies","Family":"Hilichurls","Group":"Hilichurls","ShortDescription":"Primitive inhabitants of Teyvat.","DescriptionsSection":"Hilichurls are everywhere.","ObjectType":4,"Title":"Hilichurl"}]

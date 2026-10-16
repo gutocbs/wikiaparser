@@ -1,0 +1,22 @@
+[
+  {
+    "Input": "Character Infobox\n|image = \u003Cgallery\u003E\nA.png|Card\n\u003C/gallery\u003E\n|name = Kaeya\n|obtain = * [[A]]\n* [[B]]",
+    "Output": {
+      "name": "Kaeya",
+      "obtain": "*A\n\n*B"
+    }
+  },
+  {
+    "Input": "Character Infobox\n|image = Single.png\n|name = Amber\n|title2 = \u0027\u0027\u0027x\u0027\u0027\u0027\u003C!-- c --\u003E",
+    "Output": {
+      "title2": "x"
+    }
+  },
+  {
+    "Input": "|a = 1\n |b = not a field\n|c=3",
+    "Output": {
+      "a": "1\n |b = not a field",
+      "c": "3"
+    }
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "Input": "Weapon Infobox\n|id = 11401\n|type = [[Sword]]\n|effect = line one\nline two\n|empty =\n|noequals\n|after = ok",
+    "Output": {
+      "id": "11401",
+      "type": "Sword",
+      "effect": "line one\nline two",
+      "empty": "",
+      "after": "ok"
+    }
+  },
+  {
+    "Input": "Weapon Infobox\n|key \u003C!-- c --\u003E = value\u003C!-- x --\u003E\n|Key = duplicate key\n| spaced = leading space",
+    "Output": {
+      "key": "duplicate key",
+      "spaced": "leading space"
+    }
+  },
+  {
+    "Input": "weapon infobox|inline = 1\n|image = \u003Cgallery\u003E\nA.png|Base\n\u003C/gallery\u003E\n|last = x",
+    "Output": {
+      "inline": "1",
+      "image": "A.png|Base",
+      "last": "x"
+    }
+  }
+]

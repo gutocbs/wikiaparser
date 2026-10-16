@@ -1,0 +1,90 @@
+{
+  "BaseKeys": [
+    {
+      "Input": null,
+      "Output": ""
+    },
+    {
+      "Input": "  ",
+      "Output": ""
+    },
+    {
+      "Input": "Kaeya",
+      "Output": "Kaeya"
+    },
+    {
+      "Input": "Kaeya/Lore",
+      "Output": "Kaeya"
+    },
+    {
+      "Input": "Kaeya: Pavo Ocellus",
+      "Output": "Pavo Ocellus"
+    },
+    {
+      "Input": "Template:X/doc",
+      "Output": "X"
+    },
+    {
+      "Input": " Amber / Companion ",
+      "Output": "Amber"
+    }
+  ],
+  "Obtain": [
+    {
+      "Input": null,
+      "Output": ""
+    },
+    {
+      "Input": "* [[A]]\n* [[B]] (Wish)",
+      "Output": "[[A]], [[B]] (Wish)"
+    },
+    {
+      "Input": "* A * B",
+      "Output": "A, B"
+    },
+    {
+      "Input": "A; B | C\nD",
+      "Output": "A, B, C, D"
+    }
+  ],
+  "Lists": [
+    {
+      "Input": null,
+      "Output": null
+    },
+    {
+      "Input": "",
+      "Output": null
+    },
+    {
+      "Input": "[[A]], [[B]]; C / D | a",
+      "Output": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    {
+      "Input": "x,,y",
+      "Output": [
+        "x",
+        "y"
+      ]
+    }
+  ],
+  "Descriptions": [
+    {
+      "Input": "{{Description|A [[link]] text.}}",
+      "Output": "A link text."
+    },
+    {
+      "Input": "{{Description}}",
+      "Output": null
+    },
+    {
+      "Input": "none",
+      "Output": null
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+[{"Category":"Large Furnishing","Subcategory":"Bed","Description":"A comfy bed.","Sources":["Creation"],"BlueprintSources":["Realm Depot"],"ObjectType":9,"Title":"Wooden Bed"}]

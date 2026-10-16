@@ -1,0 +1,1 @@
+[{"Set":"Gladiator\u0027s Finale","Piece":"Flower of Life","ShortDescription":"A flower that once bloomed in the arena.","LongDescription":"A long story about the arena.","ObjectType":3,"Title":"Gladiator\u0027s Nostalgia"}]

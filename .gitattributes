@@ -1,0 +1,2 @@
+# Snapshots de characterization tests: comparados byte a byte, sem conversão de fim de linha.
+"Genshin Wiki Parser.Tests/Snapshots/**" -text

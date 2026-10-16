@@ -1,0 +1,1 @@
+[{"Quality":3,"RegionLore":"Mondstadt","RegionLocation":"Mondstadt","VolumeCount":2,"Author":"Unknown","AcquisitionByVolume":{"1":["Mondstadt bookshelf","Library"],"2":["Quest reward"]},"Volumes":[{"Index":1,"Description":"The first volume.","Text":"Once upon a time."},{"Index":2,"Text":"The end."}],"ObjectType":6,"Title":"Vera\u0027s Melancholy"}]

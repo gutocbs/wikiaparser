@@ -1,0 +1,13 @@
+{
+  "Body": "\n|id = 1\n|type = Food\n|description = Uses {{Color|x",
+  "Params": {
+    "id": "1",
+    "type": "Food",
+    "description": "Uses {{Color|x"
+  },
+  "Missing": null,
+  "Templates": [
+    "|One",
+    "|Two"
+  ]
+}
