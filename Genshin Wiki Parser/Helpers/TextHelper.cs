@@ -352,41 +352,56 @@ public static partial class TextHelper
 
         string s = v;
 
-        // comentários HTML
-        s = HtmlPatterns.HtmlComment().Replace(s, "");
-        s = HtmlPatterns.UnclosedHtmlComment().Replace(s, "");
+        // Cada grupo de regex exige um caractere literal ('<', '[', '{', '\'', '\n'). Se ele não existe no texto
+        // naquele ponto, nenhuma regex do grupo casa e o Replace devolveria o mesmo texto: pulamos o grupo.
+        if (s.Contains('<'))
+        {
+            // comentários HTML
+            s = HtmlPatterns.HtmlComment().Replace(s, "");
+            s = HtmlPatterns.UnclosedHtmlComment().Replace(s, "");
 
-        // <ref>...</ref> → remove (ou poderia extrair URLs, se quiser)
-        s = HtmlPatterns.RefTag().Replace(s, "");
+            // <ref>...</ref> → remove (ou poderia extrair URLs, se quiser)
+            s = HtmlPatterns.RefTag().Replace(s, "");
 
-        // <p> → quebra; outras tags → remove
-        s = HtmlPatterns.ParagraphTag().Replace(s, "\n\n");
-        s = HtmlPatterns.BreakTag().Replace(s, "\n");
-        s = HtmlPatterns.HtmlTag().Replace(s, "");
+            // <p> → quebra; outras tags → remove
+            s = HtmlPatterns.ParagraphTag().Replace(s, "\n\n");
+            s = HtmlPatterns.BreakTag().Replace(s, "\n");
+            s = HtmlPatterns.HtmlTag().Replace(s, "");
+        }
 
-        // [http url texto] → "texto" (ou "texto (url)" se preferir)
-        s = LinkPatterns.ExternalLink().Replace(s, "$2");
+        if (s.Contains('['))
+        {
+            // [http url texto] → "texto" (ou "texto (url)" se preferir)
+            s = LinkPatterns.ExternalLink().Replace(s, "$2");
 
-        // links wiki
-        s = LinkPatterns.WikiPipeLink().Replace(s, "$2"); // [[A|B]]→B
-        s = LinkPatterns.WikiLink().Replace(s, "$1");     // [[A]]→A
-        s = LinkPatterns.CategoryLink().Replace(s, "$1");
+            // links wiki
+            s = LinkPatterns.WikiPipeLink().Replace(s, "$2"); // [[A|B]]→B
+            s = LinkPatterns.WikiLink().Replace(s, "$1");     // [[A]]→A
+            s = LinkPatterns.CategoryLink().Replace(s, "$1");
+        }
 
-        // templates COM pipe: {{x|Y}} → Y (melhor esforço)
-        s = TemplatePatterns.TemplateWithPipe().Replace(s, "$1");
+        if (s.Contains('{'))
+        {
+            // templates COM pipe: {{x|Y}} → Y (melhor esforço)
+            s = TemplatePatterns.TemplateWithPipe().Replace(s, "$1");
 
-        // templates SEM pipe: {{Cryo}} → Cryo ; {{sic|[[Akasha]]}} já caiu na regra com pipe acima
-        s = TemplatePatterns.TemplateWithoutPipe().Replace(s, "$1");
+            // templates SEM pipe: {{Cryo}} → Cryo ; {{sic|[[Akasha]]}} já caiu na regra com pipe acima
+            s = TemplatePatterns.TemplateWithoutPipe().Replace(s, "$1");
+        }
 
         // negrito/itálico de wiki
-        s = TextCleanupPatterns.WikiQuoteMarkup().Replace(s, "");
+        if (s.Contains('\''))
+            s = TextCleanupPatterns.WikiQuoteMarkup().Replace(s, "");
 
         // entidades comuns
         s = s.Replace("&mdash;", "—");
 
         // normaliza quebras múltiplas
-        s = TextCleanupPatterns.TrailingHorizontalWhitespace().Replace(s, "\n");
-        s = TextCleanupPatterns.MultipleNewLines().Replace(s, "\n\n");
+        if (s.Contains('\n'))
+        {
+            s = TextCleanupPatterns.TrailingHorizontalWhitespace().Replace(s, "\n");
+            s = TextCleanupPatterns.MultipleNewLines().Replace(s, "\n\n");
+        }
 
         return s.Trim();
     }
