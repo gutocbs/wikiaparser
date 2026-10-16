@@ -64,6 +64,8 @@ public static class MediaWikiFilter
             parsedPages.Add(page);
         }
 
+        RunMetrics.EndPhase("readAndParse");
+
         // Export after all pages were visited so services can attach late companion data
         // such as Lore, Voice-Overs and Namecards to already parsed character DTOs.
         MultiSinkExporter.ExportPerType(
@@ -74,6 +76,7 @@ public static class MediaWikiFilter
             pagePredicate: static page => page.About is not null,
             fileExtension: exportSettings.DefaultFileExtension
         );
+        RunMetrics.EndPhase("export");
     }
 
 }

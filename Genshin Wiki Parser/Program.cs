@@ -1,3 +1,4 @@
+using Genshin.Wiki.Parser.Helpers;
 using Genshin.Wiki.Parser.Settings;
 
 namespace Genshin.Wiki.Parser;
@@ -6,6 +7,7 @@ class Program
 {
     static void Main(string[] args)
     {
+        RunMetrics.Start();
         RuntimeSettings runtimeSettings = JsonConfigReader.Load<RuntimeSettings>("runtime-settings.json");
         ParserRegistrationSettings parserRegistrationSettings = JsonConfigReader.Load<ParserRegistrationSettings>("parser-registrations.json");
         ExportSettings exportSettings = JsonConfigReader.Load<ExportSettings>("export-settings.json");
@@ -34,6 +36,7 @@ class Program
         );
 
         Console.WriteLine("File parserd successfully!");
+        RunMetrics.Print();
     }
 
     private static string ResolveFromBaseDirectory(string path)
