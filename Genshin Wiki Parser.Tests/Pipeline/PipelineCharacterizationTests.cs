@@ -25,13 +25,13 @@ public class PipelineCharacterizationTests
     }
 
     // Único ponto que conhece a assinatura de entrada do pipeline. Usa os mesmos arquivos de configuração do programa.
-    private static void RunPipeline(string dumpPath, string outputPath)
+    private static void RunPipeline(string dumpPath, string outputPath, int readerQueueBatches = 0, int readerBatchSize = 64)
     {
         ParserRegistrationSettings registrations = JsonConfigReader.Load<ParserRegistrationSettings>(ConfigPath("parser-registrations.json"));
         ExportSettings exportSettings = JsonConfigReader.Load<ExportSettings>(ConfigPath("export-settings.json"));
 
         MediaWikiFilter.Process(dumpPath, AppPath("IgnoreList.json"), outputPath,
-            registrations.ToParserRegistrations(), exportSettings);
+            registrations.ToParserRegistrations(), exportSettings, readerQueueBatches, readerBatchSize);
     }
 
     private static string AppPath(string relativePath)
@@ -46,6 +46,21 @@ public class PipelineCharacterizationTests
 
         string[] files = Directory.GetFiles(_outDir).Select(Path.GetFileName).OrderBy(f => f, StringComparer.Ordinal).ToArray()!;
         Snapshot.MatchText(string.Join("\n", files), "Pipeline/_files.txt");
+        foreach (string file in files)
+            Snapshot.MatchText(File.ReadAllText(Path.Combine(_outDir, file)), $"Pipeline/{file}");
+    }
+
+    // Com a thread de leitura ligada a saída tem de ser idêntica à do modo sequencial (mesmos snapshots).
+    [TestCase(8, 64)]
+    [TestCase(1, 1)]
+    [TestCase(2, 3)]
+    [TestCase(1, 1000)]
+    public void Should_MatchSequentialSnapshots_When_UsingReaderThread(int readerQueueBatches, int readerBatchSize)
+    {
+        RunPipeline(TestPaths.Fixture("mini-dump.xml"), _outDir, readerQueueBatches, readerBatchSize);
+
+        string[] files = Directory.GetFiles(_outDir).Select(Path.GetFileName).OrderBy(f => f, StringComparer.Ordinal).ToArray()!;
+        Snapshot.MatchText(string.Join('\n', files), "Pipeline/_files.txt");
         foreach (string file in files)
             Snapshot.MatchText(File.ReadAllText(Path.Combine(_outDir, file)), $"Pipeline/{file}");
     }

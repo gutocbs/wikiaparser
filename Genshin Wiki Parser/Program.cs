@@ -14,6 +14,8 @@ class Program
 
         string inputFile = runtimeSettings.Defaults.InputFile;
         string outputPath = runtimeSettings.Defaults.OutputPath;
+        int readerQueueBatches = runtimeSettings.Processing.ReaderQueueBatches;
+        int readerBatchSize = runtimeSettings.Processing.ReaderBatchSize;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -21,6 +23,10 @@ class Program
                 inputFile = args[i + 1];
             if (args[i] == "--out" && i + 1 < args.Length)
                 outputPath = args[i + 1];
+            if (args[i] == "--reader-queue" && i + 1 < args.Length)
+                readerQueueBatches = int.Parse(args[i + 1], System.Globalization.CultureInfo.InvariantCulture);
+            if (args[i] == "--reader-batch" && i + 1 < args.Length)
+                readerBatchSize = int.Parse(args[i + 1], System.Globalization.CultureInfo.InvariantCulture);
         }
 
         string path = ResolveFromBaseDirectory(inputFile);
@@ -32,7 +38,9 @@ class Program
             ignoreListPath: ResolveFromBaseDirectory(runtimeSettings.Defaults.IgnoreListPath),
             outputPath: outputPath,
             parsers: parserRegistrationSettings.ToParserRegistrations(),
-            exportSettings: exportSettings
+            exportSettings: exportSettings,
+            readerQueueBatches: readerQueueBatches,
+            readerBatchSize: readerBatchSize
         );
 
         Console.WriteLine("File parserd successfully!");

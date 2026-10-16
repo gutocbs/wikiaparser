@@ -3,5 +3,9 @@
     "inputFile": "gensinimpact_pages_current.xml",
     "outputPath": "files",
     "ignoreListPath": "IgnoreList.json"
+  },
+  "processing": {
+    "readerQueueBatches": 8,
+    "readerBatchSize": 64
   }
 }

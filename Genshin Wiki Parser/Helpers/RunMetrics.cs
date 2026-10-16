@@ -33,6 +33,17 @@ public static class RunMetrics
         Phase.Restart();
     }
 
+    private static readonly Dictionary<string, long> Timers = new();
+
+    /// <summary>Acumula um intervalo medido com Stopwatch.GetTimestamp() num contador nomeado.</summary>
+    /// <param name="name">Nome do contador (ex.: "read", "parse").</param>
+    /// <param name="elapsedTicks">Intervalo em ticks do Stopwatch.</param>
+    public static void AddTime(string name, long elapsedTicks)
+    {
+        lock (Timers)
+            Timers[name] = Timers.GetValueOrDefault(name) + elapsedTicks;
+    }
+
     /// <summary>Registra o número atual de threads do processo (guarda o pico).</summary>
     public static void SampleThreads()
     {
@@ -50,6 +61,9 @@ public static class RunMetrics
         Console.WriteLine("---- Run metrics ----");
         foreach ((string name, long wallMs, long phaseCpuMs) in Phases)
             Console.WriteLine($"phase.{name}: wall.ms = {wallMs}, cpu.ms = {phaseCpuMs}, cores = {Cores(phaseCpuMs, wallMs)}");
+        lock (Timers)
+            foreach ((string name, long ticks) in Timers)
+                Console.WriteLine($"time.{name}.ms = {ticks * 1000 / Stopwatch.Frequency}");
         Console.WriteLine($"total: wall.ms = {totalMs}, cpu.ms = {cpuMs}, cores = {Cores(cpuMs, totalMs)}");
         Console.WriteLine($"peakWorkingSet.mb = {process.PeakWorkingSet64 / (1024 * 1024)}");
         Console.WriteLine($"peakThreads = {Math.Max(_peakThreads, process.Threads.Count)}, logicalProcessors = {Environment.ProcessorCount}");
