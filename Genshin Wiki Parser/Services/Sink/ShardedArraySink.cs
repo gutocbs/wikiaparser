@@ -177,7 +177,8 @@ public sealed class SharedArraySink<T> : IDisposable
         _fs.WriteByte((byte)']');
         _currentBytes += 1;
 
-        _fs.Flush(true);
+        // Sem fsync (Flush(true)): custava ~90 ms por arquivo. O Dispose entrega os dados ao SO,
+        // o que basta para um gerador batch que pode ser reexecutado.
         _fs.Dispose();
         _fs = null;
     }
