@@ -28,6 +28,6 @@ public static class JsonConfigReader
     private static string ResolveConfigPath(string fileName)
     {
         if (Path.IsPathRooted(fileName)) return fileName;
-        return Path.Combine(AppContext.BaseDirectory, "Config", fileName);
+        return Path.Combine(AppContext.BaseDirectory, "Configuration", fileName);
     }
 }
